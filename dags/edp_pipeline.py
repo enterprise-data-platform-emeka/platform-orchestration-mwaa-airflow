@@ -94,7 +94,7 @@ with DAG(
     # dbt project is mounted at this path inside the MWAA / local runner
     # container. In production MWAA the dbt project is bundled into the
     # plugins.zip that is uploaded to S3 (Simple Storage Service).
-    dbt_project_path = "/usr/local/airflow/dbt/platform-dbt-analytics"
+    dbt_project_path = "/opt/airflow/dbt/platform-dbt-analytics"
 
     # -----------------------------------------------------------------------
     # Group 1 — Silver (parallel Glue jobs)
