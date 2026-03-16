@@ -22,10 +22,6 @@ services:
       AIRFLOW__WEBSERVER__SECRET_KEY: "local-dev-only-not-for-production"
       AIRFLOW_HOME: /opt/airflow
 
-      # Admin UI credentials for local development.
-      _AIRFLOW_WWW_USER_USERNAME: admin
-      _AIRFLOW_WWW_USER_PASSWORD: test
-
       # AWS credentials injected from .env (populated by make env).
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
