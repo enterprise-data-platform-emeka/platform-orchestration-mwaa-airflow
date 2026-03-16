@@ -3,7 +3,7 @@
 # Shortcuts for working with the aws-mwaa-local-runner.
 # Run 'make help' to see all available commands.
 
-.PHONY: help up down logs webserver
+.PHONY: help up down logs webserver env
 
 # ---------------------------------------------------------------------------
 # Default target
@@ -14,16 +14,37 @@ help:
 	@echo "EDP MWAA (Amazon Managed Workflows for Apache Airflow) local runner"
 	@echo ""
 	@echo "Prerequisites:"
-	@echo "  1. Copy .env.example to .env and fill in your AWS credentials"
+	@echo "  1. Run 'make env' to log in via SSO and populate .env automatically"
 	@echo "  2. Symlink dbt/platform-dbt-analytics (see README)"
 	@echo "  3. Run 'make up' to start"
 	@echo ""
 	@echo "Available commands:"
+	@echo "  make env        Log in via SSO and write credentials to .env automatically"
 	@echo "  make up         Start the local MWAA runner (Airflow webserver + scheduler)"
 	@echo "  make down       Stop and remove the local MWAA runner container"
 	@echo "  make logs       Follow container logs (Ctrl+C to stop)"
 	@echo "  make webserver  Open the Airflow UI in your default browser (macOS)"
 	@echo ""
+
+# ---------------------------------------------------------------------------
+# Refresh .env with current SSO credentials
+# ---------------------------------------------------------------------------
+# Run this every time your SSO session expires (roughly every 8 hours).
+# It writes the three credential values from your active dev-admin SSO session
+# directly into .env, leaving all other lines (region, account ID, etc.) alone.
+# Usage: aws sso login --profile dev-admin && make env
+
+env:
+	@aws sso login --profile dev-admin
+	$(eval CREDS := $(shell aws configure export-credentials --profile dev-admin --format env))
+	@KEY=$$(aws configure export-credentials --profile dev-admin --format env | grep AWS_ACCESS_KEY_ID | cut -d= -f2); \
+	SECRET=$$(aws configure export-credentials --profile dev-admin --format env | grep AWS_SECRET_ACCESS_KEY | cut -d= -f2); \
+	TOKEN=$$(aws configure export-credentials --profile dev-admin --format env | grep AWS_SESSION_TOKEN | cut -d= -f2); \
+	if [ ! -f .env ]; then cp .env.example .env; fi; \
+	sed -i '' "s|^AWS_ACCESS_KEY_ID=.*|AWS_ACCESS_KEY_ID=$$KEY|" .env; \
+	sed -i '' "s|^AWS_SECRET_ACCESS_KEY=.*|AWS_SECRET_ACCESS_KEY=$$SECRET|" .env; \
+	sed -i '' "s|^#* *AWS_SESSION_TOKEN=.*|AWS_SESSION_TOKEN=$$TOKEN|" .env; \
+	echo "✓ .env updated with fresh dev-admin credentials"
 
 # ---------------------------------------------------------------------------
 # Start the local MWAA runner
@@ -36,7 +57,7 @@ help:
 up:
 	@if [ ! -f .env ]; then \
 		echo "Error: .env file not found."; \
-		echo "Run: cp .env.example .env  then fill in your AWS credentials."; \
+		echo "Run: make env  to log in via SSO and populate .env automatically."; \
 		exit 1; \
 	fi
 	docker compose up -d
