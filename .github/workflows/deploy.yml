@@ -1,0 +1,141 @@
+name: Deploy
+
+# Deploys DAGs, plugins, and requirements to the MWAA (Amazon Managed
+# Workflows for Apache Airflow) S3 (Simple Storage Service) bucket.
+#
+# What "deploy" means here:
+#   1. Upload dags/ to s3://edp-{env}-{account_id}-mwaa-dags/dags/
+#   2. Upload requirements.txt to s3://edp-{env}-{account_id}-mwaa-dags/requirements.txt
+#   3. Upload plugins/ to s3://edp-{env}-{account_id}-mwaa-dags/plugins/
+#
+# MWAA polls the DAGs bucket continuously. New DAG files appear in the UI
+# within ~30 seconds of upload. A changed requirements.txt triggers a MWAA
+# environment update which takes ~20 minutes — only change it when necessary.
+#
+# Triggers:
+#   - push to main    → CI completes successfully → automatically deploys to dev
+#   - workflow_dispatch → manually deploys to staging or prod
+#
+# Promotion path: dev (auto) → staging (manual) → prod (manual + approval)
+#
+# AWS authentication uses OIDC (OpenID Connect) — no long-lived access keys
+# are stored in GitHub secrets.
+#
+# Required GitHub configuration:
+#   Repository variables:
+#     AWS_ACCOUNT_ID  — 12-digit AWS account ID
+#   Environments: dev, staging, prod (Settings → Environments)
+#     staging — add required reviewers
+#     prod    — add required reviewers + deployment protection rules
+
+on:
+  # Triggers only after CI completes successfully on main.
+  # This ensures the DAG validates cleanly before reaching production MWAA.
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+  # Manual trigger for deploying to staging or prod.
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [staging, prod]
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+
+    # When triggered by workflow_run, only proceed if CI actually passed.
+    # workflow_dispatch bypasses this check — manual deploys are intentional.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    permissions:
+      # id-token: write is required for OIDC authentication to AWS.
+      id-token: write
+      contents: read
+
+    env:
+      ENV: ${{ inputs.environment || 'dev' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        # Assumes the GitHub Actions IAM (Identity and Access Management) role
+        # via OIDC. No access keys are stored in GitHub.
+        # The role must have s3:PutObject and s3:DeleteObject on the MWAA bucket.
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/edp-${{ env.ENV }}-github-actions-role
+          aws-region: eu-central-1
+
+      - name: Resolve AWS account ID
+        # Confirm the assumed role and capture the account ID for bucket names.
+        id: account
+        run: echo "id=$(aws sts get-caller-identity --query Account --output text)" >> "$GITHUB_OUTPUT"
+
+      - name: Set MWAA S3 bucket name
+        id: buckets
+        run: |
+          ACCOUNT_ID=${{ steps.account.outputs.id }}
+          echo "mwaa=edp-${{ env.ENV }}-${ACCOUNT_ID}-mwaa-dags" >> "$GITHUB_OUTPUT"
+
+      # -----------------------------------------------------------------------
+      # Upload DAGs
+      # -----------------------------------------------------------------------
+      # aws s3 sync uploads new or changed files and removes files that were
+      # deleted locally. The --delete flag keeps the MWAA bucket in sync with
+      # the repo — stale DAG files are removed automatically.
+
+      - name: Upload dags/ to S3
+        run: |
+          aws s3 sync dags/ s3://${{ steps.buckets.outputs.mwaa }}/dags/ \
+            --delete \
+            --exclude "__pycache__/*" \
+            --exclude "*.pyc"
+
+      # -----------------------------------------------------------------------
+      # Upload requirements.txt
+      # -----------------------------------------------------------------------
+      # MWAA detects a changed requirements.txt and starts an environment
+      # update automatically. This is ~20 minutes of downtime for the MWAA
+      # environment. Only update requirements.txt when you actually need new
+      # packages — avoid touching it for DAG-only changes.
+
+      - name: Upload requirements.txt to S3
+        run: |
+          aws s3 cp requirements.txt \
+            s3://${{ steps.buckets.outputs.mwaa }}/requirements.txt
+
+      # -----------------------------------------------------------------------
+      # Upload plugins/
+      # -----------------------------------------------------------------------
+
+      - name: Upload plugins/ to S3
+        run: |
+          aws s3 sync plugins/ s3://${{ steps.buckets.outputs.mwaa }}/plugins/ \
+            --delete \
+            --exclude "__pycache__/*" \
+            --exclude "*.pyc"
+
+      # -----------------------------------------------------------------------
+      # Deployment summary
+      # -----------------------------------------------------------------------
+
+      - name: Deployment summary
+        run: |
+          echo ""
+          echo "Deployed to MWAA environment: edp-${{ env.ENV }}"
+          echo "  dags/         -> s3://${{ steps.buckets.outputs.mwaa }}/dags/"
+          echo "  requirements  -> s3://${{ steps.buckets.outputs.mwaa }}/requirements.txt"
+          echo "  plugins/      -> s3://${{ steps.buckets.outputs.mwaa }}/plugins/"
+          echo ""
+          echo "DAG changes appear in MWAA within ~30 seconds."
+          echo "requirements.txt changes trigger a MWAA environment update (~20 min)."

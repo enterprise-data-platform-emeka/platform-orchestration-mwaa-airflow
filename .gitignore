@@ -1,0 +1,52 @@
+# .gitignore — platform-orchestration-mwaa-airflow
+
+# ---------------------------------------------------------------------------
+# Credentials — never commit these
+# ---------------------------------------------------------------------------
+.env
+*.env
+secret.tfvars
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+env/
+
+# ---------------------------------------------------------------------------
+# Airflow local state
+# ---------------------------------------------------------------------------
+# Logs produced by the local MWAA runner — not useful in version control.
+logs/
+airflow.db
+airflow.cfg
+webserver_config.py
+standalone_admin_password.txt
+
+# ---------------------------------------------------------------------------
+# dbt
+# ---------------------------------------------------------------------------
+# The dbt/ subdirectory is a mount point for platform-dbt-analytics.
+# It is either a symlink or a git submodule — tracked separately.
+dbt/
+
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+.DS_Store

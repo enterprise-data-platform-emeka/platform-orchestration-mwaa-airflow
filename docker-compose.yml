@@ -1,0 +1,83 @@
+# docker-compose.yml — EDP MWAA (Amazon Managed Workflows for Apache Airflow)
+# local development environment.
+#
+# Uses the official Amazon MWAA local runner image (amazon/mwaa-local:2_9)
+# which replicates the Airflow 2.9.2 runtime locally. The image is maintained
+# by AWS and matches the Python version and constraints used in production MWAA.
+#
+# What gets mounted into the container:
+#   dags/         — your DAG files (hot-reloaded by the scheduler)
+#   plugins/      — custom Airflow plugins (empty __init__.py for now)
+#   requirements.txt — installed at container start, same as MWAA production
+#   dbt/          — place your dbt project here (see README for setup)
+#
+# Usage:
+#   cp .env.example .env   # fill in your AWS credentials
+#   make up                # start the local runner
+#   open http://localhost:8080  (admin / test)
+#
+# The dbt/ subdirectory is mounted at /usr/local/airflow/dbt/ inside the
+# container. Symlink or clone platform-dbt-analytics into dbt/ so that the
+# BashOperator tasks in edp_pipeline.py can find the dbt project.
+
+services:
+  local-runner:
+    image: amazon/mwaa-local:2_9
+    restart: unless-stopped
+
+    # The local runner entrypoint expects this command to start both the
+    # Airflow webserver and scheduler in a single container (development mode).
+    command: local-runner
+
+    environment:
+      # AWS credentials for the local runner to call Glue, S3, Athena, etc.
+      # Source these from your .env file — never hard-code credentials here.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      # AWS_SESSION_TOKEN is optional — only needed for temporary credentials
+      # (e.g. from aws sts assume-role or AWS SSO (Single Sign-On)).
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-eu-central-1}
+
+      # MWAA_ENV drives the mwaa_env Airflow Variable at startup.
+      # Acceptable values: dev, staging, prod
+      MWAA_ENV: ${MWAA_ENV:-dev}
+
+      # AWS_ACCOUNT_ID is used to construct S3 (Simple Storage Service) bucket
+      # names that follow the edp-{env}-{account_id}-{type} naming convention.
+      AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID}
+
+      # Airflow home inside the container. Do not change this.
+      AIRFLOW_HOME: /usr/local/airflow
+
+    ports:
+      # Airflow webserver UI — http://localhost:8080 (admin / test)
+      - "8080:8080"
+
+    volumes:
+      # DAG files are hot-reloaded — save a file and the scheduler picks it
+      # up within the next DAG scan interval (default 30 seconds).
+      - ./dags:/usr/local/airflow/dags
+
+      # Plugins directory. MWAA requires this to exist even when empty.
+      - ./plugins:/usr/local/airflow/plugins
+
+      # requirements.txt is installed when the container starts. If you
+      # change it, restart the container with: docker compose restart
+      - ./requirements.txt:/usr/local/airflow/requirements.txt
+
+      # dbt project directory. Symlink or clone platform-dbt-analytics here:
+      #   ln -s ../../platform-dbt-analytics dbt/platform-dbt-analytics
+      # The edp_pipeline DAG references /usr/local/airflow/dbt/platform-dbt-analytics
+      - ./dbt:/usr/local/airflow/dbt
+
+    # Increase shared memory for Spark/pandas operations that the dbt Athena
+    # adapter might trigger locally.
+    shm_size: "256mb"
+
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

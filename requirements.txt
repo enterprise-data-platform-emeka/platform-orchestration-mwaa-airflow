@@ -1,0 +1,33 @@
+# requirements.txt — MWAA (Amazon Managed Workflows for Apache Airflow) 2.9.2
+#
+# MWAA installs these packages on top of its managed Airflow 2.9.2 base image.
+# Versions here are pinned against the official MWAA 2.9.2 constraints file:
+# https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt
+#
+# Rules for updating this file:
+#   1. Check the MWAA constraints file before bumping any version.
+#   2. Test locally using the aws-mwaa-local-runner before deploying.
+#   3. After deploying to MWAA, the environment takes ~20 minutes to pick up
+#      new requirements. Watch the CloudWatch log group for install errors.
+#
+# Packages NOT listed here (already included in MWAA base):
+#   apache-airflow==2.9.2  — managed by MWAA, never pin this yourself
+#   boto3                  — managed by MWAA
+#   botocore               — managed by MWAA
+
+# AWS provider — supplies GlueJobOperator, S3Hook, RedshiftHook, etc.
+# 8.19.0 is compatible with the MWAA 2.9.2 constraint set.
+apache-airflow-providers-amazon==8.19.0
+
+# Common SQL provider — required by the Amazon provider as a dependency.
+apache-airflow-providers-common-sql==1.11.1
+
+# dbt-core + dbt-athena for the Gold layer BashOperator tasks.
+# dbt runs inside the Airflow worker, connecting to Athena via the IAM
+# (Identity and Access Management) role attached to the MWAA execution role.
+dbt-core==1.7.17
+dbt-athena-community==1.7.1
+
+# PyAthena is the underlying Python driver dbt-athena uses.
+# Pin it explicitly to avoid drift between dbt-athena updates.
+PyAthena==3.0.8

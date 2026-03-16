@@ -1,0 +1,90 @@
+name: CI
+
+# Validates the Airflow DAG on every pull request and push to main.
+#
+# What this does:
+#   1. Installs Airflow 2.9.2 + the Amazon provider into a clean Python env.
+#   2. Imports edp_pipeline.py to confirm it parses without errors.
+#   3. Runs 'airflow dags list' to confirm no DAG import errors are reported.
+#
+# What this does NOT do:
+#   - Execute the DAG (that would require real AWS credentials and live Glue
+#     jobs — not appropriate for CI).
+#   - Run dbt (same reason).
+#
+# The deploy workflow triggers only after this CI workflow completes
+# successfully on main, ensuring broken DAGs never reach production MWAA
+# (Amazon Managed Workflows for Apache Airflow).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Validate DAG
+  # --------------------------------------------------------------------------
+  # Installs a minimal Airflow environment and checks that the DAG file
+  # imports cleanly. This catches syntax errors, bad imports, and
+  # misconfigured operators before the code ever reaches MWAA.
+
+  validate:
+    name: Validate DAG
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Airflow and providers
+        # Pin Airflow to 2.9.2 to match the MWAA environment exactly.
+        # The constraints file ensures all transitive dependencies resolve to
+        # the same versions MWAA uses in production.
+        run: |
+          pip install --upgrade pip
+          pip install \
+            "apache-airflow==2.9.2" \
+            "apache-airflow-providers-amazon==8.19.0" \
+            "apache-airflow-providers-common-sql==1.11.1" \
+            --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt"
+
+      - name: Initialise Airflow database
+        # airflow db init is required before 'airflow dags list' can run.
+        # We use a local SQLite database for the CI check — no Postgres needed.
+        run: airflow db init
+        env:
+          AIRFLOW_HOME: /tmp/airflow-ci
+
+      - name: Verify DAG imports cleanly
+        # Imports the DAG module directly and prints dag.dag_id to confirm
+        # the DAG object was constructed without errors.
+        run: python -c "from dags.edp_pipeline import dag; print('DAG loaded OK:', dag.dag_id)"
+        env:
+          AIRFLOW_HOME: /tmp/airflow-ci
+          # Prevent Airflow from trying to connect to AWS during import.
+          # The DAG uses Variable.get() with default_var, so no real connection
+          # is attempted at parse time.
+          AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+
+      - name: Check for DAG import errors
+        # 'airflow dags list' scans the dags/ directory and prints any import
+        # errors it finds. We fail the job if any import errors appear.
+        run: |
+          airflow dags list --output table 2>&1 | tee /tmp/dags_list.txt
+          if grep -i "import error" /tmp/dags_list.txt; then
+            echo "DAG import errors detected."
+            exit 1
+          fi
+          echo "No import errors found."
+        env:
+          AIRFLOW_HOME: /tmp/airflow-ci
+          AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/dags
+          AIRFLOW__CORE__LOAD_EXAMPLES: "false"
