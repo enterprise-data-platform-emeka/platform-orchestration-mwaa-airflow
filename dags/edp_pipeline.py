@@ -147,15 +147,17 @@ with DAG(
     # deploy to dev, staging, and prod without code changes — just change
     # the mwaa_env Airflow Variable.
 
+    # dbt is installed at /home/airflow/.local/bin/dbt but that path is not
+    # in the PATH used by BashOperator. Use the full path explicitly.
+    dbt_bin = "/home/airflow/.local/bin/dbt"
+
     gold_dbt_run = BashOperator(
         task_id="gold_dbt_run",
         bash_command=(
             f"cd {dbt_project_path} && "
-            f"dbt run --target {mwaa_env} --no-use-colors"
+            f"{dbt_bin} run --target {mwaa_env} --no-use-colors"
         ),
         env={
-            # Pass the target explicitly so dbt does not fall back to the
-            # default profile target if the profiles.yml default differs.
             "DBT_TARGET": mwaa_env,
         },
     )
@@ -164,7 +166,7 @@ with DAG(
         task_id="gold_dbt_test",
         bash_command=(
             f"cd {dbt_project_path} && "
-            f"dbt test --target {mwaa_env} --no-use-colors"
+            f"{dbt_bin} test --target {mwaa_env} --no-use-colors"
         ),
         env={
             "DBT_TARGET": mwaa_env,
