@@ -155,7 +155,7 @@ with DAG(
         task_id="gold_dbt_run",
         bash_command=(
             f"cd {dbt_project_path} && "
-            f"{dbt_bin} run --target {mwaa_env} --no-use-colors"
+            f"{dbt_bin} run --target {mwaa_env} --profiles-dir {dbt_project_path}/profiles --no-use-colors"
         ),
         env={
             "DBT_TARGET": mwaa_env,
@@ -166,7 +166,7 @@ with DAG(
         task_id="gold_dbt_test",
         bash_command=(
             f"cd {dbt_project_path} && "
-            f"{dbt_bin} test --target {mwaa_env} --no-use-colors"
+            f"{dbt_bin} test --target {mwaa_env} --profiles-dir {dbt_project_path}/profiles --no-use-colors"
         ),
         env={
             "DBT_TARGET": mwaa_env,
