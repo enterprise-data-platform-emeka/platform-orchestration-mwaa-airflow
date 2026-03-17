@@ -154,11 +154,18 @@ with DAG(
     aws_account_id = Variable.get("aws_account_id", default_var="158311564771")
     athena_results_bucket = f"edp-{mwaa_env}-{aws_account_id}-athena-results"
 
+    import os
     dbt_env = {
         "DBT_TARGET": mwaa_env,
         "ATHENA_RESULTS_BUCKET": athena_results_bucket,
         "ATHENA_WORKGROUP": f"edp-{mwaa_env}-workgroup",
         "DBT_ATHENA_SCHEMA": f"edp_{mwaa_env}_gold",
+        # BashOperator subprocesses do not inherit container env vars,
+        # so AWS credentials must be passed explicitly.
+        "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID", ""),
+        "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+        "AWS_SESSION_TOKEN": os.environ.get("AWS_SESSION_TOKEN", ""),
+        "AWS_DEFAULT_REGION": os.environ.get("AWS_DEFAULT_REGION", "eu-central-1"),
     }
 
     gold_dbt_run = BashOperator(
