@@ -43,9 +43,8 @@ services:
       # Plugins directory — required by MWAA even when empty.
       - ./plugins:/opt/airflow/plugins
 
-      # dbt project — symlink platform-dbt-analytics here before starting:
-      #   ln -s ../../platform-dbt-analytics dbt/platform-dbt-analytics
-      - ./dbt:/opt/airflow/dbt
+      # dbt project mounted directly — no symlink needed.
+      - ../platform-dbt-analytics:/opt/airflow/dbt/platform-dbt-analytics
 
       # Persist Airflow metadata DB and logs across container restarts.
       - airflow-data:/opt/airflow
