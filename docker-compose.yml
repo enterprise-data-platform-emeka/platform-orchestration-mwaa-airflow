@@ -9,14 +9,31 @@
 #   open http://localhost:8080  (admin / test)
 
 services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+
   airflow:
+    depends_on:
+      postgres:
+        condition: service_healthy
     build: .
     # 'standalone' runs the scheduler, webserver, and triggerer in a single
     # process — perfect for local development. No separate worker needed.
     command: standalone
 
     environment:
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__DAG_FILE_PROCESSOR_TIMEOUT: "120"
       AIRFLOW__WEBSERVER__SECRET_KEY: "local-dev-only-not-for-production"
@@ -58,3 +75,4 @@ services:
 
 volumes:
   airflow-data:
+  postgres-data:
