@@ -11,11 +11,16 @@ This DAG runs the full Silver and Gold pipeline on a daily schedule:
   2. Silver complete (join): An EmptyOperator acts as a synchronisation point
      that waits for all six Silver jobs to succeed before continuing.
 
-  3. Gold layer (sequential): dbt (data build tool) runs against Athena to
+  3. Glue Crawler: After all Silver jobs succeed, the Glue Crawler scans the
+     Silver S3 bucket and registers (or updates) table schemas in the Glue
+     Data Catalog. dbt cannot query Silver tables via Athena until the catalog
+     knows they exist.
+
+  4. Gold layer (sequential): dbt (data build tool) runs against Athena to
      produce aggregate Gold tables, then dbt test validates them. These run
      sequentially because dbt test depends on the models dbt run produces.
 
-  4. Pipeline complete: A final EmptyOperator marks the successful end of
+  5. Pipeline complete: A final EmptyOperator marks the successful end of
      the pipeline so downstream sensors can attach to it cleanly.
 
 Airflow Variables required (set via Admin → Variables in the Airflow UI):
@@ -33,6 +38,7 @@ from airflow.models import Variable
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.bash import BashOperator
 from airflow.providers.amazon.aws.operators.glue import GlueJobOperator
+from airflow.providers.amazon.aws.operators.glue_crawler import GlueCrawlerOperator
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +142,22 @@ with DAG(
     silver_complete = EmptyOperator(task_id="silver_complete")
 
     # -----------------------------------------------------------------------
+    # Group 1b — Silver Crawler
+    # -----------------------------------------------------------------------
+    # GlueCrawlerOperator starts the crawler and waits for it to finish.
+    # The crawler scans the Silver S3 bucket and registers each Parquet
+    # partition as a table in the Glue Data Catalog (edp_{env}_silver
+    # database). Without this step, dbt cannot see the Silver tables via
+    # Athena even though the Parquet files exist in S3.
+
+    run_silver_crawler = GlueCrawlerOperator(
+        task_id="run_silver_crawler",
+        config={"Name": f"edp-{mwaa_env}-silver-crawler"},
+        aws_conn_id="aws_default",
+        wait_for_completion=True,
+    )
+
+    # -----------------------------------------------------------------------
     # Group 2 — Gold (dbt run then dbt test, sequential)
     # -----------------------------------------------------------------------
     # dbt runs inside the Airflow worker container via BashOperator. In the
@@ -199,7 +221,7 @@ with DAG(
     # Dependency chain
     # -----------------------------------------------------------------------
     # [silver_dim_customer, silver_dim_product, ...] >> silver_complete
-    #   >> gold_dbt_run >> gold_dbt_test >> pipeline_complete
+    #   >> run_silver_crawler >> gold_dbt_run >> gold_dbt_test >> pipeline_complete
 
     silver_tasks >> silver_complete
-    silver_complete >> gold_dbt_run >> gold_dbt_test >> pipeline_complete
+    silver_complete >> run_silver_crawler >> gold_dbt_run >> gold_dbt_test >> pipeline_complete
