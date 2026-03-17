@@ -151,15 +151,23 @@ with DAG(
     # in the PATH used by BashOperator. Use the full path explicitly.
     dbt_bin = "/home/airflow/.local/bin/dbt"
 
+    aws_account_id = Variable.get("aws_account_id", default_var="158311564771")
+    athena_results_bucket = f"edp-{mwaa_env}-{aws_account_id}-athena-results"
+
+    dbt_env = {
+        "DBT_TARGET": mwaa_env,
+        "ATHENA_RESULTS_BUCKET": athena_results_bucket,
+        "ATHENA_WORKGROUP": f"edp-{mwaa_env}-workgroup",
+        "DBT_ATHENA_SCHEMA": f"edp_{mwaa_env}_gold",
+    }
+
     gold_dbt_run = BashOperator(
         task_id="gold_dbt_run",
         bash_command=(
             f"cd {dbt_project_path} && "
             f"{dbt_bin} run --target {mwaa_env} --profiles-dir {dbt_project_path}/profiles --no-use-colors"
         ),
-        env={
-            "DBT_TARGET": mwaa_env,
-        },
+        env=dbt_env,
     )
 
     gold_dbt_test = BashOperator(
@@ -168,9 +176,7 @@ with DAG(
             f"cd {dbt_project_path} && "
             f"{dbt_bin} test --target {mwaa_env} --profiles-dir {dbt_project_path}/profiles --no-use-colors"
         ),
-        env={
-            "DBT_TARGET": mwaa_env,
-        },
+        env=dbt_env,
     )
 
     # -----------------------------------------------------------------------
