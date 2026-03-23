@@ -3,7 +3,7 @@
 # Shortcuts for working with the aws-mwaa-local-runner.
 # Run 'make help' to see all available commands.
 
-.PHONY: help up down logs webserver env
+.PHONY: help up down logs webserver env package deploy
 
 # ---------------------------------------------------------------------------
 # Default target
@@ -19,11 +19,13 @@ help:
 	@echo "  3. Run 'make up' to start"
 	@echo ""
 	@echo "Available commands:"
-	@echo "  make env        Log in via SSO and write credentials to .env automatically"
-	@echo "  make up         Start the local MWAA runner (Airflow webserver + scheduler)"
-	@echo "  make down       Stop and remove the local MWAA runner container"
-	@echo "  make logs       Follow container logs (Ctrl+C to stop)"
-	@echo "  make webserver  Open the Airflow UI in your default browser (macOS)"
+	@echo "  make env            Log in via SSO and write credentials to .env"
+	@echo "  make up             Start the local Airflow runner"
+	@echo "  make down           Stop the local runner"
+	@echo "  make logs           Follow container logs"
+	@echo "  make webserver      Open the Airflow UI (macOS)"
+	@echo "  make package        Build plugins.zip from dbt project (run before make apply dev)"
+	@echo "  make deploy ENV=dev Upload DAG to the MWAA S3 bucket (run after make apply dev)"
 	@echo ""
 
 # ---------------------------------------------------------------------------
@@ -88,3 +90,47 @@ logs:
 
 webserver:
 	open http://localhost:8080
+
+# ---------------------------------------------------------------------------
+# Build plugins.zip for MWAA deployment
+# ---------------------------------------------------------------------------
+# MWAA extracts plugins.zip to /usr/local/airflow/plugins/ on every worker.
+# The dbt project lives there so the BashOperator can find it at a known path.
+#
+# Run this BEFORE 'make apply dev' in terraform-platform-infra-live.
+# Terraform uploads the resulting plugins.zip to the MWAA DAGs S3 bucket.
+
+package:
+	@echo "Building plugins.zip from ../platform-dbt-analytics ..."
+	@if [ ! -d "../platform-dbt-analytics" ]; then \
+		echo "Error: ../platform-dbt-analytics not found. Clone the repo first."; \
+		exit 1; \
+	fi
+	@rm -f plugins.zip
+	@cd .. && zip -r platform-orchestration-mwaa-airflow/plugins.zip platform-dbt-analytics \
+		--exclude "platform-dbt-analytics/.git/*" \
+		--exclude "platform-dbt-analytics/__pycache__/*" \
+		--exclude "platform-dbt-analytics/.venv/*" \
+		--exclude "platform-dbt-analytics/target/*" \
+		--exclude "platform-dbt-analytics/dbt_packages/*"
+	@echo "plugins.zip created ($(shell du -sh plugins.zip | cut -f1))"
+
+# ---------------------------------------------------------------------------
+# Upload DAG to the MWAA S3 bucket
+# ---------------------------------------------------------------------------
+# Run this AFTER 'make apply dev' has created the MWAA environment.
+# ENV controls which environment to deploy to (dev, staging, prod).
+# Usage: make deploy ENV=dev
+
+ENV ?= dev
+
+deploy:
+	@if [ ! -f .env ]; then \
+		echo "Error: .env not found. Run 'make env' first."; \
+		exit 1; \
+	fi
+	$(eval ACCOUNT_ID := $(shell aws sts get-caller-identity --profile $(ENV)-admin --query Account --output text))
+	@BUCKET="edp-$(ENV)-$(ACCOUNT_ID)-mwaa-dags"; \
+	echo "Uploading DAG to s3://$$BUCKET/dags/ ..."; \
+	aws s3 cp dags/edp_pipeline.py s3://$$BUCKET/dags/edp_pipeline.py --profile $(ENV)-admin; \
+	echo "DAG uploaded. MWAA picks up changes within 30 seconds."

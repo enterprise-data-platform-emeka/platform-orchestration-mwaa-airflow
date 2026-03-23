@@ -50,3 +50,10 @@ dbt/
 # macOS
 # ---------------------------------------------------------------------------
 .DS_Store
+
+# ---------------------------------------------------------------------------
+# MWAA build artifacts
+# ---------------------------------------------------------------------------
+# plugins.zip is built locally by 'make package' and uploaded to S3 by Terraform.
+# It is never committed — rebuild with 'make package' when needed.
+plugins.zip

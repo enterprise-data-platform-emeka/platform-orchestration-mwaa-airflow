@@ -97,10 +97,25 @@ with DAG(
         "fact_shipments",
     ]
 
-    # dbt project is mounted at this path inside the MWAA / local runner
-    # container. In production MWAA the dbt project is bundled into the
-    # plugins.zip that is uploaded to S3 (Simple Storage Service).
-    dbt_project_path = "/opt/airflow/dbt/platform-dbt-analytics"
+    # Detect whether we are running in MWAA or the local Docker runner by
+    # checking AIRFLOW_HOME. MWAA sets it to /usr/local/airflow; the local
+    # Docker image sets it to /opt/airflow.
+    #
+    # In MWAA: dbt is installed from requirements.txt, binary lands in
+    # $HOME/.local/bin/. The dbt project is extracted from plugins.zip to
+    # /usr/local/airflow/plugins/platform-dbt-analytics.
+    #
+    # Locally: dbt is installed inside the Docker image, binary is at
+    # /home/airflow/.local/bin/. The project is mounted as a volume.
+    airflow_home = os.environ.get("AIRFLOW_HOME", "/opt/airflow")
+    is_mwaa = airflow_home == "/usr/local/airflow"
+
+    dbt_bin = f"{os.environ.get('HOME', '/home/airflow')}/.local/bin/dbt"
+    dbt_project_path = (
+        f"{airflow_home}/plugins/platform-dbt-analytics"
+        if is_mwaa
+        else f"{airflow_home}/dbt/platform-dbt-analytics"
+    )
 
     # -----------------------------------------------------------------------
     # Group 1 — Silver (parallel Glue jobs)
@@ -168,10 +183,6 @@ with DAG(
     # DBT_TARGET maps directly to a dbt profile target so the same DAG can
     # deploy to dev, staging, and prod without code changes — just change
     # the mwaa_env Airflow Variable.
-
-    # dbt is installed at /home/airflow/.local/bin/dbt but that path is not
-    # in the PATH used by BashOperator. Use the full path explicitly.
-    dbt_bin = "/home/airflow/.local/bin/dbt"
 
     aws_account_id = Variable.get("aws_account_id", default_var="158311564771")
     athena_results_bucket = f"edp-{mwaa_env}-{aws_account_id}-athena-results"
