@@ -31,6 +31,7 @@ Schedule: 06:00 UTC daily (Bronze CDC data lands overnight from DMS (Database
 Migration Service), so 06:00 gives DMS time to finish the nightly batch).
 """
 
+import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
@@ -187,7 +188,6 @@ with DAG(
     aws_account_id = Variable.get("aws_account_id", default_var="158311564771")
     athena_results_bucket = f"edp-{mwaa_env}-{aws_account_id}-athena-results"
 
-    import os
     dbt_env = {
         "DBT_TARGET": mwaa_env,
         "ATHENA_RESULTS_BUCKET": athena_results_bucket,

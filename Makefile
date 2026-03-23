@@ -112,7 +112,10 @@ package:
 		--exclude "platform-dbt-analytics/__pycache__/*" \
 		--exclude "platform-dbt-analytics/.venv/*" \
 		--exclude "platform-dbt-analytics/target/*" \
-		--exclude "platform-dbt-analytics/dbt_packages/*"
+		--exclude "platform-dbt-analytics/dbt_packages/*" \
+		--exclude "platform-dbt-analytics/scripts/*" \
+		--exclude "platform-dbt-analytics/data/*" \
+		--exclude "platform-dbt-analytics/logs/*"
 	@echo "plugins.zip created ($(shell du -sh plugins.zip | cut -f1))"
 
 # ---------------------------------------------------------------------------
