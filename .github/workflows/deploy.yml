@@ -67,6 +67,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug resolved values
+        run: |
+          echo "ENV: ${{ env.ENV }}"
+          echo "AWS_ACCOUNT_ID set: ${{ vars.AWS_ACCOUNT_ID != '' }}"
+          echo "Role ARN: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/edp-${{ env.ENV }}-github-actions-role"
+
       - name: Configure AWS credentials (OIDC)
         # Assumes the GitHub Actions IAM (Identity and Access Management) role
         # via OIDC. No access keys are stored in GitHub.
