@@ -10,7 +10,7 @@ name: Deploy
 #
 # MWAA polls the DAGs bucket continuously. New DAG files appear in the UI
 # within ~30 seconds of upload. A changed requirements.txt triggers a MWAA
-# environment update which takes ~20 minutes — only change it when necessary.
+# environment update which takes ~20 minutes. Only change it when necessary.
 #
 # Triggers:
 #   - push to main    → CI completes successfully → automatically deploys to dev
@@ -18,15 +18,15 @@ name: Deploy
 #
 # Promotion path: dev (auto) → staging (manual) → prod (manual + approval)
 #
-# AWS authentication uses OIDC (OpenID Connect) — no long-lived access keys
+# AWS authentication uses OIDC (OpenID Connect), no long-lived access keys
 # are stored in GitHub secrets.
 #
 # Required GitHub configuration:
 #   Repository variables:
-#     AWS_ACCOUNT_ID  — 12-digit AWS account ID
+#     AWS_ACCOUNT_ID: 12-digit AWS account ID
 #   Environments: dev, staging, prod (Settings → Environments)
-#     staging — add required reviewers
-#     prod    — add required reviewers + deployment protection rules
+#     staging: add required reviewers
+#     prod: add required reviewers + deployment protection rules
 
 on:
   # Triggers only after CI completes successfully on main.
@@ -52,7 +52,7 @@ jobs:
     environment: ${{ inputs.environment || 'dev' }}
 
     # When triggered by workflow_run, only proceed if CI actually passed.
-    # workflow_dispatch bypasses this check — manual deploys are intentional.
+    # workflow_dispatch bypasses this check, manual deploys are intentional.
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     permissions:
@@ -92,7 +92,7 @@ jobs:
       # -----------------------------------------------------------------------
       # aws s3 sync uploads new or changed files and removes files that were
       # deleted locally. The --delete flag keeps the MWAA bucket in sync with
-      # the repo — stale DAG files are removed automatically.
+      # the repo. Stale DAG files are removed automatically.
 
       - name: Upload dags/ to S3
         run: |
@@ -107,7 +107,7 @@ jobs:
       # MWAA detects a changed requirements.txt and starts an environment
       # update automatically. This is ~20 minutes of downtime for the MWAA
       # environment. Only update requirements.txt when you actually need new
-      # packages — avoid touching it for DAG-only changes.
+      # packages. Avoid touching it for DAG-only changes.
 
       - name: Upload requirements.txt to S3
         run: |

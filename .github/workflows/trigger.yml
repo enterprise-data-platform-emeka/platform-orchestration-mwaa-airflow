@@ -1,0 +1,115 @@
+name: Trigger EDP Pipeline
+
+# Manually triggers the edp_pipeline Directed Acyclic Graph (DAG) in the
+# MWAA (Amazon Managed Workflows for Apache Airflow) environment for the
+# chosen deployment target.
+#
+# Why this exists:
+#   The deploy.yml workflow uploads the DAG file to S3 (Simple Storage Service).
+#   MWAA picks it up within ~30 seconds. But the pipeline itself only runs on
+#   its daily schedule (06:00 UTC) or when triggered explicitly.
+#   This workflow provides a GitHub Actions button to trigger it on demand.
+#
+# How it works:
+#   1. Authenticates with AWS via OIDC (OpenID Connect).
+#   2. Calls aws mwaa create-cli-token to get a short-lived token and the
+#      MWAA webserver hostname.
+#   3. POSTs to the MWAA CLI endpoint to trigger the DAG.
+#   4. Prints the response and exits non-zero if the request failed.
+#
+# This workflow does NOT wait for the DAG to complete. Monitor progress in
+# the MWAA UI at https://{webserver-hostname}/home.
+#
+# Prerequisites:
+#   - MWAA environment must be in AVAILABLE state.
+#   - Airflow Variables must be set (mwaa_env and aws_account_id).
+#   - Bronze data must be present in S3 for the Glue jobs to process.
+#   - edp-{env}-github-actions-role must have mwaa:CreateCliToken permission.
+#
+# Promotion path: dev (manual) -> staging (manual) -> prod (manual + approval)
+#
+# Required GitHub configuration:
+#   Repository variables:
+#     AWS_ACCOUNT_ID  12-digit AWS account ID (set per environment)
+#   Environments: dev, staging, prod (Settings -> Environments)
+#     staging  add required reviewers
+#     prod     add required reviewers + deployment protection rules
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  trigger:
+    name: Trigger edp_pipeline in ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    permissions:
+      # id-token: write is required for OIDC authentication to AWS.
+      id-token: write
+      contents: read
+
+    env:
+      ENV: ${{ inputs.environment }}
+
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        # Assumes the GitHub Actions IAM (Identity and Access Management) role
+        # via OIDC. No access keys are stored in GitHub secrets.
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/edp-${{ env.ENV }}-github-actions-role
+          aws-region: eu-central-1
+
+      - name: Trigger edp_pipeline DAG via MWAA CLI
+        # aws mwaa create-cli-token returns a short-lived bearer token and the
+        # MWAA webserver hostname. The token is valid for 60 seconds.
+        #
+        # The MWAA CLI endpoint accepts plain-text Airflow CLI commands in the
+        # POST body and returns stdout/stderr base64-encoded in a JSON response.
+        #
+        # We check the HTTP status and decode the response so failures are
+        # visible in the Actions log.
+        run: |
+          RESPONSE=$(aws mwaa create-cli-token \
+            --name edp-${{ env.ENV }}-mwaa \
+            --output json)
+
+          CLI_TOKEN=$(echo "${RESPONSE}" | jq -r '.CliToken')
+          WEB_HOSTNAME=$(echo "${RESPONSE}" | jq -r '.WebServerHostname')
+
+          HTTP_STATUS=$(curl -s \
+            -o /tmp/mwaa_out.json \
+            -w "%{http_code}" \
+            -X POST "https://${WEB_HOSTNAME}/aws_mwaa/cli" \
+            -H "Authorization: Bearer ${CLI_TOKEN}" \
+            -H "Content-Type: text/plain" \
+            --data "dags trigger edp_pipeline")
+
+          echo "HTTP status: ${HTTP_STATUS}"
+
+          if [ -s /tmp/mwaa_out.json ]; then
+            STDOUT=$(jq -r '.stdout // ""' /tmp/mwaa_out.json | base64 --decode 2>/dev/null || true)
+            STDERR=$(jq -r '.stderr // ""' /tmp/mwaa_out.json | base64 --decode 2>/dev/null || true)
+            [ -n "${STDOUT}" ] && echo "stdout: ${STDOUT}"
+            [ -n "${STDERR}" ] && echo "stderr: ${STDERR}"
+          fi
+
+          if [ "${HTTP_STATUS}" != "200" ]; then
+            echo "DAG trigger failed (HTTP ${HTTP_STATUS})."
+            exit 1
+          fi
+
+          echo ""
+          echo "edp_pipeline triggered in ${ENV}."
+          echo "Monitor progress in the MWAA UI."

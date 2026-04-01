@@ -1,5 +1,5 @@
 """
-edp_pipeline.py — Enterprise Data Platform (EDP) main orchestration DAG.
+edp_pipeline.py: Enterprise Data Platform (EDP) main orchestration DAG.
 
 This DAG runs the full Silver and Gold pipeline on a daily schedule:
 
@@ -24,8 +24,8 @@ This DAG runs the full Silver and Gold pipeline on a daily schedule:
      the pipeline so downstream sensors can attach to it cleanly.
 
 Airflow Variables required (set via Admin → Variables in the Airflow UI):
-  mwaa_env       — one of: dev, staging, prod
-  aws_account_id — 12-digit AWS account ID, e.g. 158311564771
+  mwaa_env: one of dev, staging, prod
+  aws_account_id: 12-digit AWS account ID, e.g. 158311564771
 
 Schedule: 06:00 UTC daily (Bronze CDC data lands overnight from DMS (Database
 Migration Service), so 06:00 gives DMS time to finish the nightly batch).
@@ -47,7 +47,7 @@ from airflow.providers.amazon.aws.operators.glue_crawler import GlueCrawlerOpera
 # ---------------------------------------------------------------------------
 # retries=1 with a 5-minute delay handles the most common transient failures
 # (throttling, momentary AWS API hiccups) without piling up retries.
-# email_on_failure=False keeps the MWAA environment clean — alerting is
+# email_on_failure=False keeps the MWAA environment clean, alerting is
 # handled by the AI Operations Agent via CloudWatch EventBridge instead.
 
 default_args = {
@@ -76,7 +76,7 @@ with DAG(
     # -----------------------------------------------------------------------
     # Read runtime config from Airflow Variables.
     # Variables are resolved at parse time here so that the Glue job names
-    # and dbt target are baked into each task definition — this is the
+    # and dbt target are baked into each task definition. This is the
     # standard pattern for MWAA 2.9.2 (Airflow 2.9.2).
     # -----------------------------------------------------------------------
 
@@ -87,7 +87,7 @@ with DAG(
     #                    profiles.yml inside the dbt project)
     mwaa_env = Variable.get("mwaa_env", default_var="dev")
 
-    # The six Silver Glue jobs. Order here does not matter — they run in
+    # The six Silver Glue jobs. Order here does not matter, they run in
     # parallel. The names must match what is deployed by platform-glue-jobs.
     silver_job_names = [
         "dim_customer",
@@ -119,7 +119,7 @@ with DAG(
     )
 
     # -----------------------------------------------------------------------
-    # Group 1 — Silver (parallel Glue jobs)
+    # Group 1: Silver (parallel Glue jobs)
     # -----------------------------------------------------------------------
     # GlueJobOperator submits an existing Glue job and, with
     # wait_for_completion=True, polls until the job reaches a terminal state
@@ -129,7 +129,7 @@ with DAG(
     # num_of_dpus=2 is the minimum for G.1X workers (2 DPU (Data Processing
     # Unit) = 2 workers). Adjust per-job in staging/prod if needed.
     #
-    # aws_conn_id defaults to "aws_default" — configure the MWAA connection
+    # aws_conn_id defaults to "aws_default". Configure the MWAA connection
     # in Admin → Connections to point at the correct IAM (Identity and Access
     # Management) role for your environment.
 
@@ -139,17 +139,17 @@ with DAG(
             task_id=f"silver_{job_name}",
             job_name=f"edp-{mwaa_env}-{job_name}",
             wait_for_completion=True,
-            verbose=True,
-            num_of_dpus=2,
-            # aws_conn_id uses the MWAA execution role when running in
-            # production — no explicit connection ID needed if the MWAA
-            # environment IAM role has glue:StartJobRun permission.
+            # verbose=False: verbose=True streams Glue logs from /aws-glue/jobs via
+            # CloudWatch, which requires logs:GetLogEvents on that log group. The MWAA
+            # execution role only has CloudWatch access for airflow-edp-dev-mwaa-* log
+            # groups, so verbose=True causes an immediate AccessDenied that kills the task.
+            verbose=False,
             aws_conn_id="aws_default",
         )
         silver_tasks.append(task)
 
     # -----------------------------------------------------------------------
-    # Synchronisation point — silver_complete
+    # Synchronisation point: silver_complete
     # -----------------------------------------------------------------------
     # All six Silver tasks must succeed before dbt runs. Without this join
     # point, gold_dbt_run would have six upstream dependencies listed inline,
@@ -158,7 +158,7 @@ with DAG(
     silver_complete = EmptyOperator(task_id="silver_complete")
 
     # -----------------------------------------------------------------------
-    # Group 1b — Silver Crawler
+    # Group 1b: Silver Crawler
     # -----------------------------------------------------------------------
     # GlueCrawlerOperator starts the crawler and waits for it to finish.
     # The crawler scans the Silver S3 bucket and registers each Parquet
@@ -174,7 +174,7 @@ with DAG(
     )
 
     # -----------------------------------------------------------------------
-    # Group 2 — Gold (dbt run then dbt test, sequential)
+    # Group 2: Gold (dbt run then dbt test, sequential)
     # -----------------------------------------------------------------------
     # dbt runs inside the Airflow worker container via BashOperator. In the
     # local runner, dbt is installed in the worker image. In production MWAA,
@@ -182,41 +182,54 @@ with DAG(
     # installs it into the worker environment on startup.
     #
     # DBT_TARGET maps directly to a dbt profile target so the same DAG can
-    # deploy to dev, staging, and prod without code changes — just change
+    # deploy to dev, staging, and prod without code changes. Just change
     # the mwaa_env Airflow Variable.
 
     aws_account_id = Variable.get("aws_account_id", default_var="158311564771")
     athena_results_bucket = f"edp-{mwaa_env}-{aws_account_id}-athena-results"
 
+    # append_env=True merges these vars into the worker's full environment rather
+    # than replacing it. Without this, PATH, HOME, and PYTHONPATH are stripped,
+    # and dbt's Python entry point cannot find its installed packages.
+    # AWS credentials are not included here. The MWAA execution role provides
+    # them automatically via the instance metadata service.
     dbt_env = {
         "DBT_TARGET": mwaa_env,
         "ATHENA_RESULTS_BUCKET": athena_results_bucket,
         "ATHENA_WORKGROUP": f"edp-{mwaa_env}-workgroup",
         "DBT_ATHENA_SCHEMA": f"edp_{mwaa_env}_gold",
-        # BashOperator subprocesses do not inherit container env vars,
-        # so AWS credentials must be passed explicitly.
-        "AWS_ACCESS_KEY_ID": os.environ.get("AWS_ACCESS_KEY_ID", ""),
-        "AWS_SECRET_ACCESS_KEY": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-        "AWS_SESSION_TOKEN": os.environ.get("AWS_SESSION_TOKEN", ""),
-        "AWS_DEFAULT_REGION": os.environ.get("AWS_DEFAULT_REGION", "eu-central-1"),
+        "AWS_DEFAULT_REGION": "eu-central-1",
     }
+
+    # The plugins directory in MWAA is read-only. dbt needs to write dbt_packages/,
+    # target/, and logs/ inside the project directory. Copying to /tmp gives dbt
+    # a writable workspace without touching the read-only plugins mount.
+    # cp -r source dest (no trailing slash, dest absent) creates dest as a copy
+    # of source, so dbt_run_path becomes the project root directly.
+    dbt_run_path = "/tmp/dbt_workspace"
+    dbt_profiles_path = f"{dbt_run_path}/profiles"
 
     gold_dbt_run = BashOperator(
         task_id="gold_dbt_run",
         bash_command=(
-            f"cd {dbt_project_path} && "
-            f"{dbt_bin} run --target {mwaa_env} --profiles-dir {dbt_project_path}/profiles --no-use-colors"
+            f"rm -rf {dbt_run_path} && "
+            f"cp -r {dbt_project_path} {dbt_run_path} && "
+            f"cd {dbt_run_path} && "
+            f"{dbt_bin} deps --target {mwaa_env} --profiles-dir {dbt_profiles_path} --no-use-colors && "
+            f"{dbt_bin} run --target {mwaa_env} --profiles-dir {dbt_profiles_path} --no-use-colors"
         ),
         env=dbt_env,
+        append_env=True,
     )
 
     gold_dbt_test = BashOperator(
         task_id="gold_dbt_test",
         bash_command=(
-            f"cd {dbt_project_path} && "
-            f"{dbt_bin} test --target {mwaa_env} --profiles-dir {dbt_project_path}/profiles --no-use-colors"
+            f"cd {dbt_run_path} && "
+            f"{dbt_bin} test --target {mwaa_env} --profiles-dir {dbt_profiles_path} --no-use-colors"
         ),
         env=dbt_env,
+        append_env=True,
     )
 
     # -----------------------------------------------------------------------

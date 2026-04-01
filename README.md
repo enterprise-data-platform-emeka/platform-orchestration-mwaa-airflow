@@ -15,7 +15,7 @@ platform-orchestration-mwaa-airflow/
 ├── dags/
 │   └── edp_pipeline.py        # The main orchestration DAG
 ├── plugins/
-│   └── __init__.py            # Required by MWAA — empty for now
+│   └── __init__.py            # Required by MWAA, empty for now
 ├── dbt/                       # Mount point for platform-dbt-analytics (gitignored)
 ├── docker-compose.yml         # Local MWAA runner setup
 ├── requirements.txt           # Pinned packages for MWAA 2.9.2
@@ -37,14 +37,14 @@ I use the official AWS MWAA local runner to develop and test DAG changes before 
 - AWS credentials for the `dev-admin` profile (or any profile with access to the dev environment)
 - `platform-dbt-analytics` repo available locally (for Gold task testing)
 
-### Step 1 — Clone this repo
+### Step 1: Clone this repo
 
 ```bash
 git clone <repo-url> platform-orchestration-mwaa-airflow
 cd platform-orchestration-mwaa-airflow
 ```
 
-### Step 2 — Set up AWS credentials
+### Step 2: Set up AWS credentials
 
 ```bash
 cp .env.example .env
@@ -58,9 +58,9 @@ aws sso login --profile dev-admin
 aws configure export-credentials --profile dev-admin --format env
 ```
 
-Never commit `.env` — it's in `.gitignore`.
+Never commit `.env`. It's in `.gitignore`.
 
-### Step 3 — Set up the dbt mount point
+### Step 3: Set up the dbt mount point
 
 The DAG's Gold tasks run dbt inside the container from `/usr/local/airflow/dbt/platform-dbt-analytics`. I mount the `dbt/` directory into that path. The simplest setup is a symlink:
 
@@ -77,7 +77,7 @@ git clone <dbt-repo-url> dbt/platform-dbt-analytics
 
 The `dbt/` directory is gitignored so it doesn't accidentally get committed.
 
-### Step 4 — Start the local runner
+### Step 4: Start the local runner
 
 ```bash
 make up
@@ -91,7 +91,7 @@ make webserver # open http://localhost:8080 in your browser (macOS)
 make down      # stop the container
 ```
 
-### Step 5 — Set Airflow Variables locally
+### Step 5: Set Airflow Variables locally
 
 In the Airflow UI go to Admin → Variables and create:
 
@@ -153,7 +153,7 @@ The DAG reads two Airflow Variables at parse time:
 | Variable        | Required | Default | Description                                               |
 |-----------------|----------|---------|-----------------------------------------------------------|
 | `mwaa_env`      | Yes      | `dev`   | Sets Glue job names and dbt target (`dev`/`staging`/`prod`) |
-| `aws_account_id`| No       | —       | Used for constructing S3 bucket names in logs/alerts      |
+| `aws_account_id`| No       | none    | Used for constructing S3 bucket names in logs/alerts      |
 
 Set these in Admin → Variables in the Airflow UI, or via the CLI:
 
@@ -203,7 +203,7 @@ Before adding a new package:
    `https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt`
 2. Test the install locally with `make down && make up`.
 3. Verify the DAG still imports cleanly.
-4. Only then push — a bad `requirements.txt` can cause a MWAA environment update failure that takes 20+ minutes to detect and roll back.
+4. Only then push. A bad `requirements.txt` can cause a MWAA environment update failure that takes 20+ minutes to detect and roll back.
 
 ## CI
 
