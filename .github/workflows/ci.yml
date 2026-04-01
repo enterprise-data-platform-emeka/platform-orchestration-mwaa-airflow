@@ -52,8 +52,8 @@ jobs:
           pip install --upgrade pip
           pip install \
             "apache-airflow==2.9.2" \
-            "apache-airflow-providers-amazon==8.19.0" \
-            "apache-airflow-providers-common-sql==1.11.1" \
+            "apache-airflow-providers-amazon" \
+            "apache-airflow-providers-common-sql" \
             --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt"
 
       - name: Initialise Airflow database
