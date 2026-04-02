@@ -24,6 +24,37 @@ on:
 
 jobs:
   # --------------------------------------------------------------------------
+  # Quality: ruff lint + bandit security scan
+  # Runs in parallel with validate. Fast, no Airflow install needed.
+  # Catches Python style issues and common security patterns in DAG code
+  # before the slower Airflow import validation runs.
+  # --------------------------------------------------------------------------
+  quality:
+    name: Lint and security scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install tools
+        run: pip install ruff bandit
+
+      - name: Lint (ruff)
+        run: ruff check dags/ plugins/
+
+      - name: Security scan (bandit)
+        # -ll reports MEDIUM and HIGH severity issues only.
+        # Scan DAG source and plugins — the code that runs inside MWAA.
+        run: bandit -r dags/ plugins/ -ll
+
+  # --------------------------------------------------------------------------
   # Validate DAG
   # --------------------------------------------------------------------------
   # Installs a minimal Airflow environment and checks that the DAG file
