@@ -161,6 +161,16 @@ Set these in Admin → Variables in the Airflow UI, or via the CLI:
 airflow variables set mwaa_env dev
 ```
 
+## MWAA environment and DAG
+
+The `edp-dev-mwaa` environment runs Airflow 2.9.2 on MWAA. After the DAG deploys, the full pipeline runs end-to-end with all 11 tasks green.
+
+![MWAA environment edp-dev-mwaa showing Available status running Airflow 2.9.2](images/MWAA-Airflow-AWS-Environment.png)
+
+![Airflow UI showing the edp_pipeline DAG graph with all 11 tasks green after a successful run](images/MWAA-Airflow-UI.png)
+
+---
+
 ## How to deploy to MWAA
 
 The CI/CD pipeline handles deployment automatically. Here's what happens:
