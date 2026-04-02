@@ -205,12 +205,25 @@ Before adding a new package:
 3. Verify the DAG still imports cleanly.
 4. Only then push. A bad `requirements.txt` can cause a MWAA environment update failure that takes 20+ minutes to detect and roll back.
 
-## CI
+## CI/CD
 
-The CI workflow (`.github/workflows/ci.yml`) runs on every pull request and push to main:
+CI skips runs triggered by README, `.env.example`, or `plugins.zip` changes. Only DAG code, plugins, requirements, and workflow file changes trigger the pipeline.
 
-1. Installs `apache-airflow==2.9.2` + the Amazon provider into a clean Python environment.
-2. Imports `dags/edp_pipeline.py` directly to confirm it loads without errors.
-3. Runs `airflow dags list` to check for import errors.
+### On every pull request and push to main
 
-No real AWS calls happen in CI. The DAG uses `Variable.get("mwaa_env", default_var="dev")` so it doesn't need a live Airflow database or AWS connection to parse successfully.
+Two jobs run in parallel:
+
+| Job | What it checks |
+|---|---|
+| Lint and security scan | ruff checks `dags/` and `plugins/` for style. bandit scans the same paths for MEDIUM and HIGH severity security issues. |
+| Validate DAG | Installs `apache-airflow==2.9.2` + Amazon provider, imports `edp_pipeline.py` directly, then runs `airflow dags list` to confirm zero import errors. |
+
+No real AWS calls happen in CI. The DAG uses `Variable.get("mwaa_env", default_var="dev")` so it parses without a live Airflow database or AWS connection.
+
+### On merge to main
+
+The deploy workflow triggers automatically after CI passes. It syncs `dags/`, `requirements.txt`, and `plugins/` to the MWAA S3 (Simple Storage Service) bucket in dev. MWAA picks up new DAG files within about 30 seconds. A changed `requirements.txt` triggers a MWAA environment update that takes around 20 minutes. Authentication uses OIDC (OpenID Connect), no long-lived AWS credentials are stored anywhere.
+
+### Promotion to staging and prod
+
+Trigger the Deploy workflow manually from GitHub Actions, choose the target environment. GitHub Environment protection rules require reviewer approval for staging and prod before the job runs.

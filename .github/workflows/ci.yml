@@ -19,8 +19,16 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.env.example'
+      - 'plugins.zip'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.env.example'
+      - 'plugins.zip'
 
 jobs:
   # --------------------------------------------------------------------------
