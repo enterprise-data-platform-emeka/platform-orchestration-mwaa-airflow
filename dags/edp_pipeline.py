@@ -206,7 +206,7 @@ with DAG(
     # a writable workspace without touching the read-only plugins mount.
     # cp -r source dest (no trailing slash, dest absent) creates dest as a copy
     # of source, so dbt_run_path becomes the project root directly.
-    dbt_run_path = "/tmp/dbt_workspace"
+    dbt_run_path = "/tmp/dbt_workspace"  # nosec B108 - /tmp is the only writable path in MWAA
     dbt_profiles_path = f"{dbt_run_path}/profiles"
 
     gold_dbt_run = BashOperator(
