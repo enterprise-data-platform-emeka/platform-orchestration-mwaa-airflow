@@ -130,7 +130,7 @@ make down && make up
 silver_dim_customer ─┐
 silver_dim_product  ─┤
 silver_fact_orders  ─┤
-                      ├─► silver_complete ─► gold_dbt_run ─► gold_dbt_test ─► pipeline_complete
+                      ├─► silver_complete ─► run_silver_crawler ─► gold_dbt_run ─► gold_dbt_test ─► upload_dbt_artifacts ─► pipeline_complete
 silver_fact_order_items─┤
 silver_fact_payments ──┤
 silver_fact_shipments──┘
@@ -138,11 +138,15 @@ silver_fact_shipments──┘
 
 **Silver tasks (parallel):** Six `GlueJobOperator` tasks trigger the corresponding Glue jobs. They run in parallel because each job reads from an independent Bronze partition (one per DMS table). `wait_for_completion=True` means Airflow polls the Glue API until the job finishes. If a Glue job fails, the task retries once after 5 minutes.
 
-**silver_complete:** An `EmptyOperator` join point. All six Silver tasks must succeed before dbt starts.
+**silver_complete:** An `EmptyOperator` join point. All six Silver tasks must succeed before anything downstream starts.
+
+**run_silver_crawler:** A `GlueCrawlerOperator` that runs the Silver Glue Crawler after all Silver jobs complete. This updates the Glue Catalog with any new partitions written to Silver, so Athena sees the latest data when dbt runs.
 
 **gold_dbt_run:** A `BashOperator` that runs `dbt run --target {mwaa_env}` inside the worker. This builds all Gold models in the dbt project against Athena.
 
 **gold_dbt_test:** A `BashOperator` that runs `dbt test --target {mwaa_env}` to validate data quality on the Gold models. Runs after `gold_dbt_run`.
+
+**upload_dbt_artifacts:** A `BashOperator` that copies `target/manifest.json` and `target/catalog.json` from the dbt workspace to `s3://{bronze_bucket}/metadata/dbt/`. The Analytics Agent reads these artifacts at query time to understand the business meaning behind every Gold column. Runs after `gold_dbt_test` so only artifacts from a clean, tested run are published.
 
 **pipeline_complete:** A final `EmptyOperator` that marks successful pipeline completion. Downstream sensors or notification tasks attach here.
 
@@ -250,7 +254,7 @@ No real AWS calls happen in CI. The DAG uses `Variable.get("mwaa_env", default_v
 
 ### On merge to main
 
-The deploy workflow triggers automatically after CI passes. It syncs `dags/`, `requirements.txt`, and `plugins/` to the MWAA S3 (Simple Storage Service) bucket in dev. MWAA picks up new DAG files within about 30 seconds. A changed `requirements.txt` triggers a MWAA environment update that takes around 20 minutes. Authentication uses OIDC (OpenID Connect), no long-lived AWS credentials are stored anywhere.
+The deploy workflow triggers automatically after CI passes. It syncs `dags/` and `requirements.txt` to the MWAA S3 (Simple Storage Service) bucket in dev. MWAA picks up new DAG files within about 30 seconds. A changed `requirements.txt` triggers a MWAA environment update that takes around 35 minutes. Authentication uses OIDC (OpenID Connect), no long-lived AWS credentials are stored anywhere. `plugins.zip` is not managed by this repo — push to `platform-dbt-analytics` to update the dbt project on MWAA workers.
 
 ### Promotion to staging and prod
 
