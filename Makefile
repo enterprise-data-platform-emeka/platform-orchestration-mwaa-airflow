@@ -24,7 +24,7 @@ help:
 	@echo "  make down           Stop the local runner"
 	@echo "  make logs           Follow container logs"
 	@echo "  make webserver      Open the Airflow UI (macOS)"
-	@echo "  make package        Build plugins.zip from dbt project (run before make apply dev)"
+	@echo "  make package        Build plugins.zip from dbt project (local dev only)"
 	@echo "  make deploy ENV=dev Upload DAG to the MWAA S3 bucket (run after make apply dev)"
 	@echo ""
 
@@ -92,13 +92,15 @@ webserver:
 	open http://localhost:8080
 
 # ---------------------------------------------------------------------------
-# Build plugins.zip for MWAA deployment
+# Build plugins.zip for local development
 # ---------------------------------------------------------------------------
 # MWAA extracts plugins.zip to /usr/local/airflow/plugins/ on every worker.
 # The dbt project lives there so the BashOperator can find it at a known path.
 #
-# Run this BEFORE 'make apply dev' in terraform-platform-infra-live.
-# Terraform uploads the resulting plugins.zip to the MWAA DAGs S3 bucket.
+# In production CI/CD, plugins.zip is built and published by the
+# platform-dbt-analytics deploy workflow, not here. Use this target only
+# when you need plugins.zip locally (e.g. to inspect its contents or test
+# the local MWAA runner with a specific dbt version).
 
 package:
 	@echo "Building plugins.zip from ../platform-dbt-analytics ..."

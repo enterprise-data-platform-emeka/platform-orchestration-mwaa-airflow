@@ -107,29 +107,58 @@ jobs:
             --exclude "__pycache__/*" \
             --exclude "*.pyc"
 
-      # -----------------------------------------------------------------------
-      # Upload requirements.txt
-      # -----------------------------------------------------------------------
-      # MWAA detects a changed requirements.txt and starts an environment
-      # update automatically. This is ~20 minutes of downtime for the MWAA
-      # environment. Only update requirements.txt when you actually need new
-      # packages. Avoid touching it for DAG-only changes.
-
-      - name: Upload requirements.txt to S3
+      - name: Upload requirements.txt and update MWAA if changed
+        # Uses s3api put-object instead of s3 cp to capture the new S3 version ID.
+        # An ETag comparison avoids a 35-minute MWAA environment update when
+        # requirements.txt content has not changed since the last deploy.
+        env:
+          MWAA_ENV_NAME: edp-${{ env.ENV }}-mwaa
+          MWAA_BUCKET: ${{ steps.buckets.outputs.mwaa }}
         run: |
-          aws s3 cp requirements.txt \
-            s3://${{ steps.buckets.outputs.mwaa }}/requirements.txt
+          # Get the ETag of the requirements version currently loaded on MWAA workers.
+          CURRENT_VERSION=$(aws mwaa get-environment \
+            --name "${MWAA_ENV_NAME}" \
+            --query "Environment.RequirementsS3ObjectVersion" \
+            --output text 2>/dev/null || echo "NONE")
 
-      # -----------------------------------------------------------------------
-      # Upload plugins/
-      # -----------------------------------------------------------------------
+          if [ "${CURRENT_VERSION}" != "NONE" ] && [ "${CURRENT_VERSION}" != "None" ]; then
+            CURRENT_ETAG=$(aws s3api head-object \
+              --bucket "${MWAA_BUCKET}" \
+              --key "requirements.txt" \
+              --version-id "${CURRENT_VERSION}" \
+              --query ETag \
+              --output text 2>/dev/null || echo "")
+          else
+            CURRENT_ETAG=""
+          fi
 
-      - name: Upload plugins/ to S3
-        run: |
-          aws s3 sync plugins/ s3://${{ steps.buckets.outputs.mwaa }}/plugins/ \
-            --delete \
-            --exclude "__pycache__/*" \
-            --exclude "*.pyc"
+          # Upload the new requirements.txt and capture the new S3 version ID.
+          NEW_VERSION=$(aws s3api put-object \
+            --bucket "${MWAA_BUCKET}" \
+            --key "requirements.txt" \
+            --body requirements.txt \
+            --query VersionId \
+            --output text)
+
+          NEW_ETAG=$(aws s3api head-object \
+            --bucket "${MWAA_BUCKET}" \
+            --key "requirements.txt" \
+            --version-id "${NEW_VERSION}" \
+            --query ETag \
+            --output text)
+
+          echo "Current requirements ETag : ${CURRENT_ETAG:-none}"
+          echo "New requirements ETag     : ${NEW_ETAG}"
+
+          if [ "${CURRENT_ETAG}" = "${NEW_ETAG}" ]; then
+            echo "Requirements unchanged. Skipping MWAA environment update."
+          else
+            echo "Requirements changed. Triggering MWAA environment update (~35 min)."
+            aws mwaa update-environment \
+              --name "${MWAA_ENV_NAME}" \
+              --requirements-s3-object-version "${NEW_VERSION}"
+            echo "MWAA environment update triggered successfully."
+          fi
 
       # -----------------------------------------------------------------------
       # Deployment summary
@@ -141,7 +170,7 @@ jobs:
           echo "Deployed to MWAA environment: edp-${{ env.ENV }}"
           echo "  dags/         -> s3://${{ steps.buckets.outputs.mwaa }}/dags/"
           echo "  requirements  -> s3://${{ steps.buckets.outputs.mwaa }}/requirements.txt"
-          echo "  plugins/      -> s3://${{ steps.buckets.outputs.mwaa }}/plugins/"
           echo ""
           echo "DAG changes appear in MWAA within ~30 seconds."
-          echo "requirements.txt changes trigger a MWAA environment update (~20 min)."
+          echo "A changed requirements.txt triggers a MWAA environment update (~35 min)."
+          echo "plugins.zip is owned by platform-dbt-analytics CI — deploy that repo to update dbt on MWAA workers."

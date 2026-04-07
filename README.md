@@ -173,37 +173,55 @@ The `edp-dev-mwaa` environment runs Airflow 2.9.2 on MWAA. After the DAG deploys
 
 ## How to deploy to MWAA
 
-The CI/CD pipeline handles deployment automatically. Here's what happens:
+The CI/CD pipeline handles all deployment automatically. Here's how it works:
 
-1. Push to `main` → CI runs, validates the DAG import.
-2. CI passes → Deploy workflow triggers automatically, syncs to dev MWAA.
-3. For staging/prod → trigger the Deploy workflow manually via GitHub Actions → choose the environment.
+### What each repo owns
 
-GitHub Environments (`staging`, `prod`) require reviewer approval before the deployment runs. Set this up in Settings → Environments.
+| Artifact | Owner | Update cost |
+|---|---|---|
+| DAGs (`dags/`) | This repo | ~30 seconds (S3 sync) |
+| `requirements.txt` | This repo | ~35 minutes (MWAA environment update) |
+| `plugins.zip` (dbt project) | `platform-dbt-analytics` repo | ~35 minutes (MWAA environment update) |
+
+This separation means you can update DAGs dozens of times a day with no downtime. Changing packages or the dbt project triggers a controlled environment update.
+
+### On push to main
+
+1. CI validates the DAG (lint + import check).
+2. CI passes → Deploy workflow triggers automatically.
+3. DAGs sync to S3 (MWAA picks them up within ~30 seconds).
+4. `requirements.txt` is uploaded. If its content changed, the workflow calls `aws mwaa update-environment` to apply the new packages (~35 min). If content is unchanged, the update is skipped.
+5. `plugins.zip` is NOT managed by this repo. Push to `platform-dbt-analytics` to update the dbt project on MWAA workers.
+
+### Promotion to staging and prod
+
+Trigger the Deploy workflow manually from GitHub Actions and choose the target environment. GitHub Environment protection rules require reviewer approval for staging and prod.
 
 ### Manual deployment (if needed)
 
-If you need to deploy outside of CI:
-
 ```bash
-# Authenticate
 aws sso login --profile dev-admin
 
 ACCOUNT_ID=$(aws sts get-caller-identity --profile dev-admin --query Account --output text)
 ENV=dev
 BUCKET="edp-${ENV}-${ACCOUNT_ID}-mwaa-dags"
 
-# Sync DAGs
+# Sync DAGs (picked up by MWAA within ~30 seconds)
 aws s3 sync dags/ s3://${BUCKET}/dags/ --delete --profile dev-admin
 
-# Upload requirements
+# Upload requirements.txt (triggers MWAA update if changed)
 aws s3 cp requirements.txt s3://${BUCKET}/requirements.txt --profile dev-admin
-
-# Sync plugins
-aws s3 sync plugins/ s3://${BUCKET}/plugins/ --delete --profile dev-admin
 ```
 
-MWAA picks up new DAG files within ~30 seconds. A changed `requirements.txt` triggers a MWAA environment update that takes ~20 minutes.
+To update `plugins.zip` manually, run `make package` in `platform-dbt-analytics` and deploy from that repo.
+
+### First deploy after a fresh infrastructure apply
+
+After `terraform apply` creates a new MWAA environment, it contains an empty placeholder `plugins.zip`. To load the real dbt project:
+
+1. Trigger the `platform-dbt-analytics` deploy workflow manually (via GitHub Actions → workflow_dispatch).
+2. Wait ~35 minutes for the MWAA environment update to complete.
+3. The pipeline is then ready to run end-to-end.
 
 ## Updating requirements
 
