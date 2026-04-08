@@ -1,16 +1,18 @@
 name: Deploy
 
-# Deploys DAGs, plugins, and requirements to the MWAA (Amazon Managed
-# Workflows for Apache Airflow) S3 (Simple Storage Service) bucket.
+# Deploys DAGs and requirements to the MWAA (Amazon Managed Workflows for
+# Apache Airflow) S3 (Simple Storage Service) bucket.
 #
 # What "deploy" means here:
-#   1. Upload dags/ to s3://edp-{env}-{account_id}-mwaa-dags/dags/
-#   2. Upload requirements.txt to s3://edp-{env}-{account_id}-mwaa-dags/requirements.txt
-#   3. Upload plugins/ to s3://edp-{env}-{account_id}-mwaa-dags/plugins/
+#   1. Assert MWAA is AVAILABLE — abort if CREATING or UPDATING
+#   2. Upload dags/ to s3://edp-{env}-{account_id}-mwaa-dags/dags/
+#   3. Upload requirements.txt and call update-environment only if content changed
+#
+# plugins.zip is owned by platform-dbt-analytics CI, not this repo.
 #
 # MWAA polls the DAGs bucket continuously. New DAG files appear in the UI
 # within ~30 seconds of upload. A changed requirements.txt triggers a MWAA
-# environment update which takes ~20 minutes. Only change it when necessary.
+# environment update which takes ~35 minutes. Only change it when necessary.
 #
 # Triggers:
 #   - push to main    → CI completes successfully → automatically deploys to dev
@@ -43,7 +45,7 @@ on:
         description: "Target environment"
         required: true
         type: choice
-        options: [staging, prod]
+        options: [dev, staging, prod]
 
 jobs:
   deploy:
@@ -93,6 +95,24 @@ jobs:
           ACCOUNT_ID=${{ steps.account.outputs.id }}
           echo "mwaa=edp-${{ env.ENV }}-${ACCOUNT_ID}-mwaa-dags" >> "$GITHUB_OUTPUT"
 
+      - name: Assert MWAA is AVAILABLE
+        # Fail fast if MWAA is CREATING or UPDATING. Calling update-environment
+        # on top of an in-progress provision queues a second 35-minute update
+        # unnecessarily. Re-run this workflow once MWAA reaches AVAILABLE.
+        env:
+          MWAA_ENV_NAME: edp-${{ env.ENV }}-mwaa
+        run: |
+          STATUS=$(aws mwaa get-environment \
+            --name "${MWAA_ENV_NAME}" \
+            --query "Environment.Status" \
+            --output text)
+          echo "MWAA status: ${STATUS}"
+          if [ "${STATUS}" != "AVAILABLE" ]; then
+            echo "MWAA environment is ${STATUS}. Deploy aborted."
+            echo "Wait for AVAILABLE, then re-run this workflow."
+            exit 1
+          fi
+
       # -----------------------------------------------------------------------
       # Upload DAGs
       # -----------------------------------------------------------------------
@@ -108,14 +128,19 @@ jobs:
             --exclude "*.pyc"
 
       - name: Upload requirements.txt and update MWAA if changed
-        # Uses s3api put-object instead of s3 cp to capture the new S3 version ID.
-        # An ETag comparison avoids a 35-minute MWAA environment update when
-        # requirements.txt content has not changed since the last deploy.
+        # Compares local file content against the version currently loaded on
+        # MWAA workers BEFORE uploading. Only uploads and triggers the 35-minute
+        # environment update when the content has actually changed.
         env:
           MWAA_ENV_NAME: edp-${{ env.ENV }}-mwaa
           MWAA_BUCKET: ${{ steps.buckets.outputs.mwaa }}
         run: |
-          # Get the ETag of the requirements version currently loaded on MWAA workers.
+          # Compute the MD5 of the local requirements.txt.
+          # S3 ETags for single-part uploads are the MD5 hash, quoted.
+          LOCAL_MD5=$(md5sum requirements.txt | awk '{print $1}')
+          LOCAL_ETAG="\"${LOCAL_MD5}\""
+
+          # Get the ETag of the version currently loaded on MWAA workers.
           CURRENT_VERSION=$(aws mwaa get-environment \
             --name "${MWAA_ENV_NAME}" \
             --query "Environment.RequirementsS3ObjectVersion" \
@@ -132,32 +157,23 @@ jobs:
             CURRENT_ETAG=""
           fi
 
-          # Upload the new requirements.txt and capture the new S3 version ID.
-          NEW_VERSION=$(aws s3api put-object \
-            --bucket "${MWAA_BUCKET}" \
-            --key "requirements.txt" \
-            --body requirements.txt \
-            --query VersionId \
-            --output text)
-
-          NEW_ETAG=$(aws s3api head-object \
-            --bucket "${MWAA_BUCKET}" \
-            --key "requirements.txt" \
-            --version-id "${NEW_VERSION}" \
-            --query ETag \
-            --output text)
-
+          echo "Local requirements ETag   : ${LOCAL_ETAG}"
           echo "Current requirements ETag : ${CURRENT_ETAG:-none}"
-          echo "New requirements ETag     : ${NEW_ETAG}"
 
-          if [ "${CURRENT_ETAG}" = "${NEW_ETAG}" ]; then
-            echo "Requirements unchanged. Skipping MWAA environment update."
+          if [ "${LOCAL_ETAG}" = "${CURRENT_ETAG}" ]; then
+            echo "Requirements unchanged. Skipping upload and MWAA environment update."
           else
-            echo "Requirements changed. Triggering MWAA environment update (~35 min)."
+            echo "Requirements changed. Uploading and triggering MWAA environment update (~35 min)."
+            NEW_VERSION=$(aws s3api put-object \
+              --bucket "${MWAA_BUCKET}" \
+              --key "requirements.txt" \
+              --body requirements.txt \
+              --query VersionId \
+              --output text)
             aws mwaa update-environment \
               --name "${MWAA_ENV_NAME}" \
               --requirements-s3-object-version "${NEW_VERSION}"
-            echo "MWAA environment update triggered successfully."
+            echo "MWAA environment update triggered."
           fi
 
       # -----------------------------------------------------------------------
