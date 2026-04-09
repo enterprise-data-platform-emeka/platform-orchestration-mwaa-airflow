@@ -130,7 +130,7 @@ make down && make up
 silver_dim_customer ─┐
 silver_dim_product  ─┤
 silver_fact_orders  ─┤
-                      ├─► silver_complete ─► run_silver_crawler ─► gold_dbt_run ─► gold_dbt_test ─► upload_dbt_artifacts ─► pipeline_complete
+                      ├─► silver_complete ─► run_silver_crawler ─► gold_dbt_run ─► gold_dbt_test ─► pipeline_complete
 silver_fact_order_items─┤
 silver_fact_payments ──┤
 silver_fact_shipments──┘
@@ -142,11 +142,9 @@ silver_fact_shipments──┘
 
 **run_silver_crawler:** A `GlueCrawlerOperator` that runs the Silver Glue Crawler after all Silver jobs complete. This updates the Glue Catalog with any new partitions written to Silver, so Athena sees the latest data when dbt runs.
 
-**gold_dbt_run:** A `BashOperator` that runs `dbt run --target {mwaa_env}` inside the worker. This builds all Gold models in the dbt project against Athena.
+**gold_dbt_run:** A `BashOperator` that sets up the dbt workspace and runs `dbt deps` then `dbt run`. At the start of the task, it runs `aws s3 sync s3://{mwaa-bucket}/dbt/platform-dbt-analytics/ /tmp/dbt_workspace/` to download the latest dbt project from S3. This means dbt model changes deployed by the `platform-dbt-analytics` CI take effect on the next DAG run with no MWAA environment update needed. Locally, the project is copied from the Docker volume mount instead.
 
-**gold_dbt_test:** A `BashOperator` that runs `dbt test --target {mwaa_env}` to validate data quality on the Gold models. Runs after `gold_dbt_run`.
-
-**upload_dbt_artifacts:** A `BashOperator` that copies `target/manifest.json` and `target/catalog.json` from the dbt workspace to `s3://{bronze_bucket}/metadata/dbt/`. The Analytics Agent reads these artifacts at query time to understand the business meaning behind every Gold column. Runs after `gold_dbt_test` so only artifacts from a clean, tested run are published.
+**gold_dbt_test:** A `BashOperator` that runs `dbt test --target {mwaa_env}` against the Gold models written by `gold_dbt_run`. Runs sequentially after because tests depend on the tables that `dbt run` produces.
 
 **pipeline_complete:** A final `EmptyOperator` that marks successful pipeline completion. Downstream sensors or notification tasks attach here.
 
@@ -184,18 +182,19 @@ The CI/CD pipeline handles all deployment automatically. Here's how it works:
 | Artifact | Owner | Update cost |
 |---|---|---|
 | DAGs (`dags/`) | This repo | ~30 seconds (S3 sync) |
-| `requirements.txt` | This repo | ~35 minutes (MWAA environment update) |
-| `plugins.zip` (dbt project) | `platform-dbt-analytics` repo | ~35 minutes (MWAA environment update) |
+| `requirements.txt` | This repo | ~35 minutes (MWAA environment update, skipped if unchanged) |
+| `plugins.zip` | Terraform only | Permanent placeholder, never updated by any CI pipeline |
+| dbt project files | `platform-dbt-analytics` repo | Seconds (S3 sync to `s3://{mwaa-bucket}/dbt/platform-dbt-analytics/`) |
 
-This separation means you can update DAGs dozens of times a day with no downtime. Changing packages or the dbt project triggers a controlled environment update.
+The dbt project is no longer in plugins.zip. The `platform-dbt-analytics` deploy workflow syncs the project directly to S3. MWAA workers download it at task runtime. This means dbt model changes take effect on the next DAG run with no MWAA environment update. A 35-minute MWAA update now only happens when Python packages change.
 
 ### On push to main
 
 1. CI validates the DAG (lint + import check).
 2. CI passes → Deploy workflow triggers automatically.
 3. DAGs sync to S3 (MWAA picks them up within ~30 seconds).
-4. `requirements.txt` is uploaded. If its content changed, the workflow calls `aws mwaa update-environment` to apply the new packages (~35 min). If content is unchanged, the update is skipped.
-5. `plugins.zip` is NOT managed by this repo. Push to `platform-dbt-analytics` to update the dbt project on MWAA workers.
+4. `requirements.txt` is compared against the version currently on MWAA workers. If its content changed, the workflow calls `aws mwaa update-environment` to apply the new packages (~35 min). If content is unchanged, the update is skipped.
+5. The dbt project is not managed by this repo. Push to `platform-dbt-analytics` to update dbt on MWAA workers (S3 sync, seconds).
 
 ### Promotion to staging and prod
 
@@ -213,19 +212,22 @@ BUCKET="edp-${ENV}-${ACCOUNT_ID}-mwaa-dags"
 # Sync DAGs (picked up by MWAA within ~30 seconds)
 aws s3 sync dags/ s3://${BUCKET}/dags/ --delete --profile dev-admin
 
-# Upload requirements.txt (triggers MWAA update if changed)
+# Upload requirements.txt (triggers MWAA update only if content changed)
 aws s3 cp requirements.txt s3://${BUCKET}/requirements.txt --profile dev-admin
 ```
 
-To update `plugins.zip` manually, run `make package` in `platform-dbt-analytics` and deploy from that repo.
+To update the dbt project on MWAA workers, push to `platform-dbt-analytics`. Its deploy workflow syncs the project to `s3://${BUCKET}/dbt/platform-dbt-analytics/` in seconds with no MWAA environment update needed.
 
 ### First deploy after a fresh infrastructure apply
 
-After `terraform apply` creates a new MWAA environment, it contains an empty placeholder `plugins.zip`. To load the real dbt project:
+After `make apply dev` creates a new MWAA environment, follow this sequence entirely from GitHub Actions:
 
-1. Trigger the `platform-dbt-analytics` deploy workflow manually (via GitHub Actions → workflow_dispatch).
-2. Wait ~35 minutes for the MWAA environment update to complete.
-3. The pipeline is then ready to run end-to-end.
+1. Trigger the `platform-dbt-analytics` deploy workflow (auto on push, or manually via workflow_dispatch). The dbt project syncs to S3 in seconds. No MWAA update triggered.
+2. Trigger this repo's deploy workflow (auto on push, or manually). DAGs upload to S3. MWAA update only if `requirements.txt` changed (~35 min, skip if unchanged).
+3. After MWAA is Available: trigger the `edp_pipeline` DAG in the Airflow UI. Glue jobs populate Silver, dbt runs inside MWAA to produce Gold.
+4. Re-trigger `platform-dbt-analytics` deploy workflow → the `run-dbt` job now succeeds because Silver data exists.
+
+The only step that can take 35 minutes is step 2 when `requirements.txt` changed. On a daily build-and-destroy cycle where Python packages haven't changed, step 2 completes in ~30 seconds.
 
 ## Updating requirements
 
@@ -254,7 +256,7 @@ No real AWS calls happen in CI. The DAG uses `Variable.get("mwaa_env", default_v
 
 ### On merge to main
 
-The deploy workflow triggers automatically after CI passes. It syncs `dags/` and `requirements.txt` to the MWAA S3 (Simple Storage Service) bucket in dev. MWAA picks up new DAG files within about 30 seconds. A changed `requirements.txt` triggers a MWAA environment update that takes around 35 minutes. Authentication uses OIDC (OpenID Connect), no long-lived AWS credentials are stored anywhere. `plugins.zip` is not managed by this repo — push to `platform-dbt-analytics` to update the dbt project on MWAA workers.
+The deploy workflow triggers automatically after CI passes. It syncs `dags/` to the MWAA S3 (Simple Storage Service) bucket in dev (MWAA picks them up within ~30 seconds) and compares `requirements.txt` against the version currently loaded on MWAA workers. A changed `requirements.txt` triggers a MWAA environment update (~35 minutes). An unchanged `requirements.txt` skips the update entirely. Authentication uses OIDC (OpenID Connect), no long-lived AWS credentials are stored anywhere. The dbt project is not managed by this repo: push to `platform-dbt-analytics` to update dbt on MWAA workers (S3 sync, seconds, no MWAA update).
 
 ### Promotion to staging and prod
 
