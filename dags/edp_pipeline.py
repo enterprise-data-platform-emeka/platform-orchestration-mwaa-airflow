@@ -20,6 +20,12 @@ This DAG runs the full Silver and Gold pipeline on a daily schedule:
      produce aggregate Gold tables, then dbt test validates them. These run
      sequentially because dbt test depends on the models dbt run produces.
 
+     In MWAA, the dbt project is downloaded from S3 at the start of gold_dbt_run.
+     The platform-dbt-analytics deploy workflow syncs the project to
+     s3://{mwaa-bucket}/dbt/platform-dbt-analytics/ on every push. This means
+     dbt model changes take effect on the next DAG run with no MWAA environment
+     update needed.
+
   5. Pipeline complete: A final EmptyOperator marks the successful end of
      the pipeline so downstream sensors can attach to it cleanly.
 
@@ -101,22 +107,8 @@ with DAG(
     # Detect whether we are running in MWAA or the local Docker runner by
     # checking AIRFLOW_HOME. MWAA sets it to /usr/local/airflow; the local
     # Docker image sets it to /opt/airflow.
-    #
-    # In MWAA: dbt is installed from requirements.txt, binary lands in
-    # $HOME/.local/bin/. The dbt project is extracted from plugins.zip to
-    # /usr/local/airflow/plugins/platform-dbt-analytics.
-    #
-    # Locally: dbt is installed inside the Docker image, binary is at
-    # /home/airflow/.local/bin/. The project is mounted as a volume.
     airflow_home = os.environ.get("AIRFLOW_HOME", "/opt/airflow")
     is_mwaa = airflow_home == "/usr/local/airflow"
-
-    dbt_bin = f"{os.environ.get('HOME', '/home/airflow')}/.local/bin/dbt"
-    dbt_project_path = (
-        f"{airflow_home}/plugins/platform-dbt-analytics"
-        if is_mwaa
-        else f"{airflow_home}/dbt/platform-dbt-analytics"
-    )
 
     # -----------------------------------------------------------------------
     # Group 1: Silver (parallel Glue jobs)
@@ -125,9 +117,6 @@ with DAG(
     # wait_for_completion=True, polls until the job reaches a terminal state
     # (SUCCEEDED, FAILED, STOPPED). If the job fails, Airflow marks the task
     # as failed and the retry logic in default_args kicks in.
-    #
-    # num_of_dpus=2 is the minimum for G.1X workers (2 DPU (Data Processing
-    # Unit) = 2 workers). Adjust per-job in staging/prod if needed.
     #
     # aws_conn_id defaults to "aws_default". Configure the MWAA connection
     # in Admin → Connections to point at the correct IAM (Identity and Access
@@ -201,19 +190,38 @@ with DAG(
         "AWS_DEFAULT_REGION": "eu-central-1",
     }
 
-    # The plugins directory in MWAA is read-only. dbt needs to write dbt_packages/,
-    # target/, and logs/ inside the project directory. Copying to /tmp gives dbt
-    # a writable workspace without touching the read-only plugins mount.
-    # cp -r source dest (no trailing slash, dest absent) creates dest as a copy
-    # of source, so dbt_run_path becomes the project root directly.
+    dbt_bin = f"{os.environ.get('HOME', '/home/airflow')}/.local/bin/dbt"
     dbt_run_path = "/tmp/dbt_workspace"  # nosec B108 - /tmp is the only writable path in MWAA
     dbt_profiles_path = f"{dbt_run_path}/profiles"
+
+    # How the dbt project reaches the worker differs between MWAA and the local runner.
+    #
+    # In MWAA: the platform-dbt-analytics deploy workflow syncs the project to
+    #   s3://{mwaa_bucket}/dbt/platform-dbt-analytics/ on every push. The worker
+    #   downloads it at task runtime via aws s3 sync. No plugins.zip involved, no
+    #   MWAA environment update needed when dbt models change.
+    #
+    # Locally: the project is mounted as a Docker volume at
+    #   {airflow_home}/dbt/platform-dbt-analytics. Copied to a writable path because
+    #   the volume mount may be read-only and dbt needs to write target/ and logs/.
+    mwaa_bucket = f"edp-{mwaa_env}-{aws_account_id}-mwaa-dags"
+
+    if is_mwaa:
+        dbt_setup_cmd = (
+            f"rm -rf {dbt_run_path} && "
+            f"aws s3 sync s3://{mwaa_bucket}/dbt/platform-dbt-analytics/ {dbt_run_path}/"
+        )
+    else:
+        dbt_local_path = f"{airflow_home}/dbt/platform-dbt-analytics"
+        dbt_setup_cmd = (
+            f"rm -rf {dbt_run_path} && "
+            f"cp -r {dbt_local_path} {dbt_run_path}"
+        )
 
     gold_dbt_run = BashOperator(
         task_id="gold_dbt_run",
         bash_command=(
-            f"rm -rf {dbt_run_path} && "
-            f"cp -r {dbt_project_path} {dbt_run_path} && "
+            f"{dbt_setup_cmd} && "
             f"cd {dbt_run_path} && "
             f"{dbt_bin} deps --target {mwaa_env} --profiles-dir {dbt_profiles_path} --no-use-colors && "
             f"{dbt_bin} run --target {mwaa_env} --profiles-dir {dbt_profiles_path} --no-use-colors"
