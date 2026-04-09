@@ -182,19 +182,19 @@ The CI/CD pipeline handles all deployment automatically. Here's how it works:
 | Artifact | Owner | Update cost |
 |---|---|---|
 | DAGs (`dags/`) | This repo | ~30 seconds (S3 sync) |
-| `requirements.txt` | This repo | ~35 minutes (MWAA environment update, skipped if unchanged) |
-| `plugins.zip` | Terraform only | Permanent placeholder, never updated by any CI pipeline |
+| `requirements.txt` | Terraform (`modules/orchestration/requirements.txt`) | ~35 minutes (terraform apply, only when packages change) |
+| `plugins.zip` | Terraform only | Permanent placeholder, never updated by any pipeline |
 | dbt project files | `platform-dbt-analytics` repo | Seconds (S3 sync to `s3://{mwaa-bucket}/dbt/platform-dbt-analytics/`) |
 
-The dbt project is no longer in plugins.zip. The `platform-dbt-analytics` deploy workflow syncs the project directly to S3. MWAA workers download it at task runtime. This means dbt model changes take effect on the next DAG run with no MWAA environment update. A 35-minute MWAA update now only happens when Python packages change.
+The MWAA runtime environment, including Python packages, is infrastructure. Terraform owns `requirements.txt` and creates MWAA with all packages already installed. This repo's CI pipeline only uploads DAG files. It never calls `aws mwaa update-environment`. A 35-minute MWAA update only happens when a package change goes through `terraform apply`, which is rare.
 
 ### On push to main
 
 1. CI validates the DAG (lint + import check).
 2. CI passes → Deploy workflow triggers automatically.
-3. DAGs sync to S3 (MWAA picks them up within ~30 seconds).
-4. `requirements.txt` is compared against the version currently on MWAA workers. If its content changed, the workflow calls `aws mwaa update-environment` to apply the new packages (~35 min). If content is unchanged, the update is skipped.
-5. The dbt project is not managed by this repo. Push to `platform-dbt-analytics` to update dbt on MWAA workers (S3 sync, seconds).
+3. DAGs sync to S3. MWAA picks them up within ~30 seconds. Done.
+
+The deploy workflow does nothing else. No requirements upload. No `aws mwaa update-environment` call. Python packages are owned by Terraform and installed when MWAA is first created.
 
 ### Promotion to staging and prod
 
@@ -211,33 +211,37 @@ BUCKET="edp-${ENV}-${ACCOUNT_ID}-mwaa-dags"
 
 # Sync DAGs (picked up by MWAA within ~30 seconds)
 aws s3 sync dags/ s3://${BUCKET}/dags/ --delete --profile dev-admin
-
-# Upload requirements.txt (triggers MWAA update only if content changed)
-aws s3 cp requirements.txt s3://${BUCKET}/requirements.txt --profile dev-admin
 ```
 
-To update the dbt project on MWAA workers, push to `platform-dbt-analytics`. Its deploy workflow syncs the project to `s3://${BUCKET}/dbt/platform-dbt-analytics/` in seconds with no MWAA environment update needed.
+To change Python packages: update `modules/orchestration/requirements.txt` in `terraform-platform-infra-live` and run `terraform apply`. Terraform uploads the new version and triggers the MWAA environment update (~35 min).
+
+To update the dbt project on MWAA workers: push to `platform-dbt-analytics`. Its deploy workflow syncs the project to `s3://${BUCKET}/dbt/platform-dbt-analytics/` in seconds with no MWAA environment update needed.
 
 ### First deploy after a fresh infrastructure apply
 
 After `make apply dev` creates a new MWAA environment, follow this sequence entirely from GitHub Actions:
 
-1. Trigger the `platform-dbt-analytics` deploy workflow (auto on push, or manually via workflow_dispatch). The dbt project syncs to S3 in seconds. No MWAA update triggered.
-2. Trigger this repo's deploy workflow (auto on push, or manually). DAGs upload to S3. MWAA update only if `requirements.txt` changed (~35 min, skip if unchanged).
-3. After MWAA is Available: trigger the `edp_pipeline` DAG in the Airflow UI. Glue jobs populate Silver, dbt runs inside MWAA to produce Gold.
-4. Re-trigger `platform-dbt-analytics` deploy workflow → the `run-dbt` job now succeeds because Silver data exists.
+1. Terraform apply creates MWAA with packages already installed. MWAA takes ~20-30 min to reach Available status.
+2. Trigger the `platform-dbt-analytics` deploy workflow (auto on push, or manually). The dbt project syncs to S3 in seconds. The `run-dbt` job will fail because Silver tables don't exist yet. That is expected.
+3. Trigger this repo's deploy workflow (auto on push, or manually). DAGs upload to S3 (~30 seconds). No MWAA update triggered.
+4. After MWAA is Available: trigger the `edp_pipeline` DAG in the Airflow UI. Glue jobs populate Silver, dbt runs inside MWAA to produce Gold.
+5. Re-trigger `platform-dbt-analytics` deploy workflow manually. The `run-dbt` job now succeeds because Silver data exists.
 
-The only step that can take 35 minutes is step 2 when `requirements.txt` changed. On a daily build-and-destroy cycle where Python packages haven't changed, step 2 completes in ~30 seconds.
+There is no 35-minute MWAA update in this sequence. Terraform installs packages during environment creation. The only time a 35-minute update happens is when Python packages actually change, which goes through `terraform apply` not through this repo's CI.
 
-## Updating requirements
+## Updating Python packages
 
-Before adding a new package:
+Python packages for MWAA are managed by Terraform, not by this repo's CI. To add or change a package:
 
 1. Check it against the MWAA 2.9.2 constraints file:
    `https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt`
-2. Test the install locally with `make down && make up`.
+2. Test the install locally with `make down && make up` using the `requirements.txt` in this repo.
 3. Verify the DAG still imports cleanly.
-4. Only then push. A bad `requirements.txt` can cause a MWAA environment update failure that takes 20+ minutes to detect and roll back.
+4. Update `modules/orchestration/requirements.txt` in `terraform-platform-infra-live` with the same change.
+5. Update `requirements.txt` in this repo so local development stays in sync.
+6. Run `terraform apply` in `terraform-platform-infra-live`. Terraform uploads the new file and triggers a MWAA environment update (~35 min). This is a deliberate infrastructure change.
+
+A bad `requirements.txt` can cause a MWAA environment update failure that takes 20+ minutes to detect. Test locally first.
 
 ## CI/CD
 
@@ -256,7 +260,7 @@ No real AWS calls happen in CI. The DAG uses `Variable.get("mwaa_env", default_v
 
 ### On merge to main
 
-The deploy workflow triggers automatically after CI passes. It syncs `dags/` to the MWAA S3 (Simple Storage Service) bucket in dev (MWAA picks them up within ~30 seconds) and compares `requirements.txt` against the version currently loaded on MWAA workers. A changed `requirements.txt` triggers a MWAA environment update (~35 minutes). An unchanged `requirements.txt` skips the update entirely. Authentication uses OIDC (OpenID Connect), no long-lived AWS credentials are stored anywhere. The dbt project is not managed by this repo: push to `platform-dbt-analytics` to update dbt on MWAA workers (S3 sync, seconds, no MWAA update).
+The deploy workflow triggers automatically after CI passes. It syncs `dags/` to the MWAA S3 (Simple Storage Service) bucket in dev. MWAA picks up new DAG files within ~30 seconds. That is the entire deploy. The workflow never uploads `requirements.txt` and never calls `aws mwaa update-environment`. Python packages are managed by Terraform. Authentication uses OIDC (OpenID Connect), no long-lived AWS credentials are stored anywhere. To update dbt on MWAA workers, push to `platform-dbt-analytics` (S3 sync, seconds, no MWAA update).
 
 ### Promotion to staging and prod
 

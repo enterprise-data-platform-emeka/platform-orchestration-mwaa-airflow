@@ -1,14 +1,24 @@
 name: Deploy
 
-# Deploys DAGs and requirements to the MWAA (Amazon Managed Workflows for
-# Apache Airflow) S3 (Simple Storage Service) bucket.
+# Deploys DAGs to the MWAA (Amazon Managed Workflows for Apache Airflow)
+# S3 (Simple Storage Service) bucket.
 #
 # What "deploy" means here:
 #   1. Assert MWAA is AVAILABLE — abort if CREATING or UPDATING
 #   2. Upload dags/ to s3://edp-{env}-{account_id}-mwaa-dags/dags/
-#   3. Upload requirements.txt and call update-environment only if content changed
+#      MWAA picks up new DAG files within ~30 seconds. That is it.
 #
-# plugins.zip is owned by platform-dbt-analytics CI, not this repo.
+# What this workflow does NOT do:
+#   - It never uploads requirements.txt. Terraform owns the MWAA runtime
+#     environment including Python packages. To change packages, update
+#     modules/orchestration/requirements.txt in terraform-platform-infra-live
+#     and run terraform apply.
+#   - It never calls aws mwaa update-environment. Package updates are an
+#     infrastructure change and go through the Terraform pipeline.
+#   - It never touches plugins.zip. That is a permanent empty placeholder
+#     created by Terraform and never changed.
+#   - It does not manage the dbt project. The platform-dbt-analytics deploy
+#     workflow syncs dbt directly to S3. MWAA workers download it at runtime.
 #
 # MWAA polls the DAGs bucket continuously. New DAG files appear in the UI
 # within ~30 seconds of upload. A changed requirements.txt triggers a MWAA
@@ -127,55 +137,6 @@ jobs:
             --exclude "__pycache__/*" \
             --exclude "*.pyc"
 
-      - name: Upload requirements.txt and update MWAA if changed
-        # Compares local file content against the version currently loaded on
-        # MWAA workers BEFORE uploading. Only uploads and triggers the 35-minute
-        # environment update when the content has actually changed.
-        env:
-          MWAA_ENV_NAME: edp-${{ env.ENV }}-mwaa
-          MWAA_BUCKET: ${{ steps.buckets.outputs.mwaa }}
-        run: |
-          # Compute the MD5 of the local requirements.txt.
-          # S3 ETags for single-part uploads are the MD5 hash, quoted.
-          LOCAL_MD5=$(md5sum requirements.txt | awk '{print $1}')
-          LOCAL_ETAG="\"${LOCAL_MD5}\""
-
-          # Get the ETag of the version currently loaded on MWAA workers.
-          CURRENT_VERSION=$(aws mwaa get-environment \
-            --name "${MWAA_ENV_NAME}" \
-            --query "Environment.RequirementsS3ObjectVersion" \
-            --output text 2>/dev/null || echo "NONE")
-
-          if [ "${CURRENT_VERSION}" != "NONE" ] && [ "${CURRENT_VERSION}" != "None" ]; then
-            CURRENT_ETAG=$(aws s3api head-object \
-              --bucket "${MWAA_BUCKET}" \
-              --key "requirements.txt" \
-              --version-id "${CURRENT_VERSION}" \
-              --query ETag \
-              --output text 2>/dev/null || echo "")
-          else
-            CURRENT_ETAG=""
-          fi
-
-          echo "Local requirements ETag   : ${LOCAL_ETAG}"
-          echo "Current requirements ETag : ${CURRENT_ETAG:-none}"
-
-          if [ "${LOCAL_ETAG}" = "${CURRENT_ETAG}" ]; then
-            echo "Requirements unchanged. Skipping upload and MWAA environment update."
-          else
-            echo "Requirements changed. Uploading and triggering MWAA environment update (~35 min)."
-            NEW_VERSION=$(aws s3api put-object \
-              --bucket "${MWAA_BUCKET}" \
-              --key "requirements.txt" \
-              --body requirements.txt \
-              --query VersionId \
-              --output text)
-            aws mwaa update-environment \
-              --name "${MWAA_ENV_NAME}" \
-              --requirements-s3-object-version "${NEW_VERSION}"
-            echo "MWAA environment update triggered."
-          fi
-
       # -----------------------------------------------------------------------
       # Deployment summary
       # -----------------------------------------------------------------------
@@ -184,9 +145,10 @@ jobs:
         run: |
           echo ""
           echo "Deployed to MWAA environment: edp-${{ env.ENV }}"
-          echo "  dags/         -> s3://${{ steps.buckets.outputs.mwaa }}/dags/"
-          echo "  requirements  -> s3://${{ steps.buckets.outputs.mwaa }}/requirements.txt"
+          echo "  dags/ -> s3://${{ steps.buckets.outputs.mwaa }}/dags/"
           echo ""
           echo "DAG changes appear in MWAA within ~30 seconds."
-          echo "A changed requirements.txt triggers a MWAA environment update (~35 min)."
-          echo "plugins.zip is owned by platform-dbt-analytics CI — deploy that repo to update dbt on MWAA workers."
+          echo ""
+          echo "To change Python packages: update modules/orchestration/requirements.txt"
+          echo "in terraform-platform-infra-live and run terraform apply (~35 min)."
+          echo "To update dbt models: push to platform-dbt-analytics (S3 sync, seconds)."
