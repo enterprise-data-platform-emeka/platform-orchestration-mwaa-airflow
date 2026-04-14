@@ -2,6 +2,8 @@
 
 This repository is part of the [Enterprise Data Platform](https://github.com/enterprise-data-platform-emeka/platform-docs). For the full project overview, architecture diagram, and build order, start there.
 
+**Previous:** [platform-dbt-analytics](https://github.com/enterprise-data-platform-emeka/platform-dbt-analytics): that repo defines the dbt models that the DAG orchestrated here runs on every pipeline execution.
+
 ---
 
 This repo holds the Airflow DAG (Directed Acyclic Graph) that orchestrates the Enterprise Data Platform (EDP) production data pipeline. It runs on MWAA (Amazon Managed Workflows for Apache Airflow) version 2.9.2 and drives the daily Silver and Gold data transformations.
@@ -98,13 +100,13 @@ In the Airflow UI go to Admin → Variables and create:
 | Key             | Value           | Description                         |
 |-----------------|-----------------|-------------------------------------|
 | `mwaa_env`      | `dev`           | Target environment                  |
-| `aws_account_id`| `158311564771`  | Your AWS account ID                 |
+| `aws_account_id`| `<your-account-id>`  | Your AWS account ID            |
 
 Or set them via the Airflow CLI inside the container:
 
 ```bash
 docker compose exec local-runner airflow variables set mwaa_env dev
-docker compose exec local-runner airflow variables set aws_account_id 158311564771
+docker compose exec local-runner airflow variables set aws_account_id <your-account-id>
 ```
 
 ### DAG hot-reload
@@ -126,14 +128,22 @@ make down && make up
 
 ### Task breakdown
 
-```
-silver_dim_customer ─┐
-silver_dim_product  ─┤
-silver_fact_orders  ─┤
-                      ├─► silver_complete ─► run_silver_crawler ─► gold_dbt_run ─► gold_dbt_test ─► pipeline_complete
-silver_fact_order_items─┤
-silver_fact_payments ──┤
-silver_fact_shipments──┘
+```mermaid
+flowchart LR
+    subgraph par["Run in parallel"]
+        SC[silver_dim_customer]
+        SP[silver_dim_product]
+        SO[silver_fact_orders]
+        SOI[silver_fact_order_items]
+        SPAY[silver_fact_payments]
+        SSHIP[silver_fact_shipments]
+    end
+
+    SC & SP & SO & SOI & SPAY & SSHIP --> J([silver_complete])
+    J --> C[run_silver_crawler]
+    C --> R[gold_dbt_run]
+    R --> T[gold_dbt_test]
+    T --> PC([pipeline_complete])
 ```
 
 **Silver tasks (parallel):** Six `GlueJobOperator` tasks trigger the corresponding Glue jobs. They run in parallel because each job reads from an independent Bronze partition (one per DMS table). `wait_for_completion=True` means Airflow polls the Glue API until the job finishes. If a Glue job fails, the task retries once after 5 minutes.
@@ -265,3 +275,7 @@ The deploy workflow triggers automatically after CI passes. It syncs `dags/` to 
 ### Promotion to staging and prod
 
 Trigger the Deploy workflow manually from GitHub Actions, choose the target environment. GitHub Environment protection rules require reviewer approval for staging and prod before the job runs.
+
+---
+
+**Next:** [platform-analytics-agent](https://github.com/enterprise-data-platform-emeka/platform-analytics-agent): with Gold data flowing through the orchestrated pipeline, the analytics agent exposes it through a plain-English query interface backed by Claude and a Streamlit browser UI.
