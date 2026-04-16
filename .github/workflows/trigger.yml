@@ -71,6 +71,16 @@ jobs:
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/edp-${{ env.ENV }}-github-actions-role
           aws-region: eu-central-1
 
+      - name: Wait for MWAA to parse the DAG
+        # MWAA polls the DAGs bucket every ~30 seconds. After deploy.yml uploads
+        # the DAG file, wait long enough for it to appear in the DagModel before
+        # triggering. Without this, the trigger hits an empty DagModel and gets
+        # DagNotFound even though the file is already in S3.
+        run: |
+          echo "Waiting 60 seconds for MWAA to parse the DAG..."
+          sleep 60
+          echo "Done waiting."
+
       - name: Trigger edp_pipeline DAG via MWAA CLI
         # aws mwaa create-cli-token returns a short-lived bearer token and the
         # MWAA webserver hostname. The token is valid for 60 seconds.
@@ -78,8 +88,9 @@ jobs:
         # The MWAA CLI endpoint accepts plain-text Airflow CLI commands in the
         # POST body and returns stdout/stderr base64-encoded in a JSON response.
         #
-        # We check the HTTP status and decode the response so failures are
-        # visible in the Actions log.
+        # MWAA always returns HTTP 200 for CLI requests, even when the underlying
+        # Airflow command fails. We must also check the decoded stderr for
+        # "Airflow CLI returned an error" to detect real failures.
         run: |
           RESPONSE=$(aws mwaa create-cli-token \
             --name edp-${{ env.ENV }}-mwaa \
@@ -98,15 +109,28 @@ jobs:
 
           echo "HTTP status: ${HTTP_STATUS}"
 
+          STDOUT=""
+          STDERR=""
           if [ -s /tmp/mwaa_out.json ]; then
             STDOUT=$(jq -r '.stdout // ""' /tmp/mwaa_out.json | base64 --decode 2>/dev/null || true)
             STDERR=$(jq -r '.stderr // ""' /tmp/mwaa_out.json | base64 --decode 2>/dev/null || true)
-            [ -n "${STDOUT}" ] && echo "stdout: ${STDOUT}"
-            [ -n "${STDERR}" ] && echo "stderr: ${STDERR}"
           fi
+
+          [ -n "${STDOUT}" ] && echo "stdout: ${STDOUT}" || true
+          [ -n "${STDERR}" ] && echo "stderr: ${STDERR}" || true
 
           if [ "${HTTP_STATUS}" != "200" ]; then
             echo "DAG trigger failed (HTTP ${HTTP_STATUS})."
+            exit 1
+          fi
+
+          # MWAA CLI always returns HTTP 200. Check stderr for Airflow-level errors
+          # (e.g. DagNotFound, parse errors) which are only visible in the response body.
+          if echo "${STDERR}" | grep -q "Airflow CLI returned an error"; then
+            echo ""
+            echo "Airflow reported an error. DAG trigger did not succeed."
+            echo "If the error is DagNotFound, the DAG may not have been uploaded yet."
+            echo "Re-run deploy.yml first, then re-run this workflow."
             exit 1
           fi
 
