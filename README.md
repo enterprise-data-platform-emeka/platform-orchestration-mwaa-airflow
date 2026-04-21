@@ -6,7 +6,11 @@ This repository is part of the [Enterprise Data Platform](https://github.com/ent
 
 ---
 
-This repo holds the Airflow DAG (Directed Acyclic Graph) that orchestrates the Enterprise Data Platform (EDP) production data pipeline. It runs on MWAA (Amazon Managed Workflows for Apache Airflow) version 2.9.2 and drives the daily Silver and Gold data transformations.
+**Orchestrator note:** The platform supports two pipeline orchestrators. This repo covers the **MWAA (Amazon Managed Workflows for Apache Airflow) path**, which is used when recording the YouTube demo because it shows the Airflow UI with a visual graph of task dependencies. For daily development sessions, the platform uses **AWS Step Functions** instead: the `modules/step-functions` Terraform module creates a state machine that runs the same pipeline (6 Silver Glue jobs, Silver crawler, dbt) in ~10 minutes with no 25-minute MWAA startup wait. To switch between them, comment/uncomment the relevant module block in `terraform-platform-infra-live/environments/dev/main.tf` and re-run `terraform apply`.
+
+---
+
+This repo holds the Airflow DAG (Directed Acyclic Graph) that orchestrates the Enterprise Data Platform (EDP) production data pipeline. It runs on MWAA version 2.9.2 and drives the daily Silver and Gold data transformations.
 
 The pipeline follows Medallion Architecture. Raw CDC (Change Data Capture) events land in Bronze S3 (Simple Storage Service) overnight from DMS (Database Migration Service). At 06:00 UTC this DAG kicks off six parallel Glue PySpark jobs that clean and reshape the data into Silver, then dbt (data build tool) runs against Athena to produce Gold aggregates that Redshift Serverless exposes to the BI dashboard.
 
@@ -129,6 +133,7 @@ make down && make up
 ### Task breakdown
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4B5320', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#3a4118', 'lineColor': '#4B5320', 'secondaryColor': '#F0F7FF', 'tertiaryColor': '#F0F7FF', 'background': '#ffffff', 'clusterBkg': '#F0F7FF', 'edgeLabelBackground': '#ffffff'}}}%%
 flowchart LR
     subgraph par["Run in parallel"]
         SC[silver_dim_customer]
