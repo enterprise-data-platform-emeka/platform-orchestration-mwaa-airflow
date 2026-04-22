@@ -133,22 +133,45 @@ make down && make up
 ### Task breakdown
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4B5320', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#3a4118', 'lineColor': '#4B5320', 'secondaryColor': '#F0F7FF', 'tertiaryColor': '#F0F7FF', 'background': '#ffffff', 'clusterBkg': '#F0F7FF', 'edgeLabelBackground': '#ffffff'}}}%%
 flowchart LR
-    subgraph par["Run in parallel"]
-        SC[silver_dim_customer]
-        SP[silver_dim_product]
-        SO[silver_fact_orders]
-        SOI[silver_fact_order_items]
-        SPAY[silver_fact_payments]
-        SSHIP[silver_fact_shipments]
+    subgraph par["Run in parallel — all six start at the same time"]
+        SC[silver_dim_customer\nGlueJobOperator]
+        SP[silver_dim_product\nGlueJobOperator]
+        SO[silver_fact_orders\nGlueJobOperator]
+        SOI[silver_fact_order_items\nGlueJobOperator]
+        SPAY[silver_fact_payments\nGlueJobOperator]
+        SSHIP[silver_fact_shipments\nGlueJobOperator]
     end
 
-    SC & SP & SO & SOI & SPAY & SSHIP --> J([silver_complete])
-    J --> C[run_silver_crawler]
-    C --> R[gold_dbt_run]
-    R --> T[gold_dbt_test]
-    T --> PC([pipeline_complete])
+    SC & SP & SO & SOI & SPAY & SSHIP -->|all six must succeed| J([silver_complete\nEmptyOperator join point])
+    J -->|Silver partitions ready| C[run_silver_crawler\nregisters new partitions\nin Glue Catalog]
+    C -->|Athena can now see\nlatest Silver tables| R[gold_dbt_run\ndbt deps then dbt run]
+    R -->|Gold Parquet written\nto S3| T[gold_dbt_test\ndbt test]
+    T -->|all data quality\ntests pass| UA[upload_dbt_artifacts\nmanifest.json + catalog.json\ncopied to Bronze S3]
+    UA -->|Analytics Agent schema\nupdated for next session| PC([pipeline_complete\nEmptyOperator])
+```
+
+### Step Functions state machine (default daily orchestrator)
+
+The same pipeline runs as an AWS Step Functions state machine for daily development. It uses Glue SDK integrations (no Lambda), starts immediately with no warm-up, and runs end-to-end in ~10-12 minutes. To use Step Functions instead of MWAA, enable the `step-functions` module and disable the `orchestration` module in `terraform-platform-infra-live/environments/dev/main.tf`.
+
+```mermaid
+flowchart LR
+    subgraph par["Run in parallel — all six start at the same time"]
+        SC[silver_dim_customer\nGlue SDK integration]
+        SP[silver_dim_product\nGlue SDK integration]
+        SO[silver_fact_orders\nGlue SDK integration]
+        SOI[silver_fact_order_items\nGlue SDK integration]
+        SPAY[silver_fact_payments\nGlue SDK integration]
+        SSHIP[silver_fact_shipments\nGlue SDK integration]
+    end
+
+    SC & SP & SO & SOI & SPAY & SSHIP -->|all six must succeed| J([silver_complete\nParallel state join])
+    J -->|Silver partitions ready| C[run_silver_crawler\nregisters new partitions\nin Glue Catalog]
+    C -->|Athena can now see\nlatest Silver tables| R[gold_dbt_run\nECS task: dbt deps\nthen dbt run]
+    R -->|Gold Parquet written\nto S3| T[gold_dbt_test\nECS task: dbt test]
+    T -->|all data quality\ntests pass| UA[upload_dbt_artifacts\nmanifest.json + catalog.json\ncopied to Bronze S3]
+    UA -->|Analytics Agent schema\nupdated for next session| PC([pipeline_complete])
 ```
 
 **Silver tasks (parallel):** Six `GlueJobOperator` tasks trigger the corresponding Glue jobs. They run in parallel because each job reads from an independent Bronze partition (one per DMS table). `wait_for_completion=True` means Airflow polls the Glue API until the job finishes. If a Glue job fails, the task retries once after 5 minutes.
