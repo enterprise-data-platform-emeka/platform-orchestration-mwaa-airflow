@@ -31,7 +31,7 @@ This DAG runs the full Silver and Gold pipeline on a daily schedule:
 
 Airflow Variables required (set via Admin → Variables in the Airflow UI):
   mwaa_env: one of dev, staging, prod
-  aws_account_id: 12-digit AWS account ID, e.g. 158311564771
+  aws_account_id: 12-digit AWS account ID from your AWS account
 
 Schedule: 06:00 UTC daily (Bronze CDC data lands overnight from DMS (Database
 Migration Service), so 06:00 gives DMS time to finish the nightly batch).
@@ -174,7 +174,7 @@ with DAG(
     # deploy to dev, staging, and prod without code changes. Just change
     # the mwaa_env Airflow Variable.
 
-    aws_account_id = Variable.get("aws_account_id", default_var="158311564771")
+    aws_account_id = Variable.get("aws_account_id")
     athena_results_bucket = f"edp-{mwaa_env}-{aws_account_id}-athena-results"
 
     # append_env=True merges these vars into the worker's full environment rather

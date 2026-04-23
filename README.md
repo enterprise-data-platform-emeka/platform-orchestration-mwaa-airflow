@@ -6,7 +6,7 @@ This repository is part of the [Enterprise Data Platform](https://github.com/ent
 
 ---
 
-**Orchestrator note:** The platform supports two pipeline orchestrators. This repo covers the **MWAA (Amazon Managed Workflows for Apache Airflow) path**, which is used when recording the YouTube demo because it shows the Airflow UI with a visual graph of task dependencies. For daily development sessions, the platform uses **AWS Step Functions** instead: the `modules/step-functions` Terraform module creates a state machine that runs the same pipeline (6 Silver Glue jobs, Silver crawler, dbt) in ~10 minutes with no 25-minute MWAA startup wait. To switch between them, comment/uncomment the relevant module block in `terraform-platform-infra-live/environments/dev/main.tf` and re-run `terraform apply`.
+**Orchestrator note:** The platform supports two pipeline orchestrators that run the same pipeline steps: 6 Silver Glue jobs, Silver Glue Crawler, dbt run and test, dbt artifact upload. This repo covers the **MWAA (Amazon Managed Workflows for Apache Airflow) path**, which provides a managed Airflow environment with a visual task dependency graph in the Airflow UI. For daily development sessions where fast startup is the priority, the platform uses **AWS Step Functions** instead: the `modules/step-functions` Terraform module creates a state machine that starts immediately with no 25-minute MWAA startup wait and costs a fraction of a cent per run. Both orchestrators produce the same Gold data and drive the same Analytics Agent. To switch between them, comment/uncomment the relevant module block in `terraform-platform-infra-live/environments/dev/main.tf` and re-run `terraform apply`.
 
 ---
 
