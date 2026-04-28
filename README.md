@@ -223,6 +223,7 @@ The CI/CD pipeline handles all deployment automatically. Here's how it works:
 | `requirements.txt` | Terraform (`modules/orchestration/requirements.txt`) | ~35 minutes (terraform apply, only when packages change) |
 | `plugins.zip` | Terraform only | Permanent placeholder, never updated by any pipeline |
 | dbt project files | `platform-dbt-analytics` repo | Seconds (S3 sync to `s3://{mwaa-bucket}/dbt/platform-dbt-analytics/`) |
+| `run_dbt` Glue job | Terraform (`modules/orchestration/main.tf`) | Created by `terraform apply`. The `gold_dbt_run` DAG task references this job by name (`edp-{env}-run-dbt`). It is a Python Shell job that installs dbt-core and dbt-athena-community at runtime via `--additional-python-modules`. |
 
 The MWAA runtime environment, including Python packages, is infrastructure. Terraform owns `requirements.txt` and creates MWAA with all packages already installed. This repo's CI pipeline only uploads DAG files. It never calls `aws mwaa update-environment`. A 35-minute MWAA update only happens when a package change goes through `terraform apply`, which is rare.
 
