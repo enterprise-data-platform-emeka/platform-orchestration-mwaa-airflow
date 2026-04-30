@@ -19,18 +19,18 @@ The pipeline follows Medallion Architecture. Raw CDC (Change Data Capture) event
 ```
 platform-orchestration-mwaa-airflow/
 ├── dags/
-│   └── edp_pipeline.py        # The main orchestration DAG
+│   └── edp_pipeline.py        ← main orchestration DAG
 ├── plugins/
-│   └── __init__.py            # Required by MWAA, empty for now
-├── dbt/                       # Mount point for platform-dbt-analytics (gitignored)
-├── docker-compose.yml         # Local MWAA runner setup
-├── requirements.txt           # Pinned packages for MWAA 2.9.2
-├── Makefile                   # Shortcuts for local development
-├── .env.example               # Template for local credentials
+│   └── __init__.py            ← required by MWAA, empty
+├── dbt/                       ← mount point for platform-dbt-analytics (gitignored)
+├── docker-compose.yml         ← local MWAA runner setup
+├── requirements.txt           ← pinned packages for MWAA 2.9.2
+├── Makefile                   ← shortcuts for local development
+├── .env.example               ← template for local credentials
 └── .github/
     └── workflows/
-        ├── ci.yml             # Validate DAG on every PR and push
-        └── deploy.yml         # Sync to MWAA S3 bucket on merge to main
+        ├── ci.yml             ← validate DAG on every PR and push
+        └── deploy.yml         ← sync to MWAA S3 bucket on merge to main
 ```
 
 ## Local development
@@ -56,7 +56,7 @@ cd platform-orchestration-mwaa-airflow
 cp .env.example .env
 ```
 
-Open `.env` and fill in your AWS credentials. For temporary SSO (Single Sign-On) credentials:
+Open `.env` and fill in the AWS credentials. For temporary SSO (Single Sign-On) credentials:
 
 ```bash
 aws sso login --profile dev-admin
@@ -99,7 +99,7 @@ make down      # stop the container
 
 ### Step 5: Set Airflow Variables locally
 
-In the Airflow UI go to Admin → Variables and create:
+In the Airflow UI, I go to Admin → Variables and create:
 
 | Key             | Value           | Description                         |
 |-----------------|-----------------|-------------------------------------|
@@ -117,7 +117,7 @@ docker compose exec local-runner airflow variables set aws_account_id <your-acco
 
 The `dags/` directory is mounted into the container. Save a change to `edp_pipeline.py` and the scheduler picks it up within ~30 seconds. No restart needed.
 
-If you change `requirements.txt`, restart the container so the new packages install:
+If `requirements.txt` changes, restart the container so the new packages install:
 
 ```bash
 make down && make up
