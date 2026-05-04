@@ -54,6 +54,7 @@ Migration Service), so 06:00 gives DMS time to finish the nightly batch).
 
 import json
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -109,8 +110,15 @@ def _validate_silver_row_counts(env: str, **context) -> None:
     even if CloudWatch propagation is slightly delayed. Does not scan S3 or
     Athena — the count comes from the Glue job's in-memory DataFrame.count()
     call during the write phase.
+
+    Sleeps 90 seconds before querying. CloudWatch custom metrics published via
+    put_metric_data take approximately 60-90 seconds to become queryable via
+    GetMetricStatistics. Airflow's task scheduling adds some natural delay but
+    not reliably enough to skip this wait.
     """
     import boto3
+
+    time.sleep(90)
 
     cw = boto3.client("cloudwatch", region_name="eu-central-1")
     now = datetime.now(timezone.utc)
