@@ -308,3 +308,37 @@ Trigger the Deploy workflow manually from GitHub Actions, choose the target envi
 ---
 
 **Next:** [platform-analytics-agent](https://github.com/enterprise-data-platform-emeka/platform-analytics-agent): with Gold data flowing through the orchestrated pipeline, the analytics agent exposes it through a plain-English query interface backed by Claude and a Streamlit browser UI.
+
+---
+
+## Enterprise qualities
+
+### Pipeline reliability
+
+The DAG uses `retries=1` with a 5-minute delay on all tasks. This handles the most common transient failures (AWS API throttling, momentary network blips) without cascading retries. `max_active_runs=1` prevents two pipeline runs from overlapping and writing Silver simultaneously, which would produce duplicate rows.
+
+---
+
+### Data quality gates
+
+Three validation tasks run inline in the pipeline before dbt produces Gold output. Each gate is implemented in both the MWAA DAG (as Airflow operators) and the Step Functions path (as a Lambda or Glue job step) so both orchestrators enforce the same checks.
+
+**O1: Silver row count validation** (`validate_silver_row_counts`, after `silver_complete`): reads the `SilverRowCount` CloudWatch metric published by each Glue job. If any Silver table has zero rows or no metric was published in the last two hours, the DAG fails here before the Crawler or dbt wastes time on empty tables. This catches silent data loss without scanning S3 or Athena.
+
+**D2: dbt source freshness gate** (`gold_dbt_source_freshness`, after `run_silver_crawler`): runs `dbt test --select source:silver`, which executes the `freshness_relative_to_reference` column tests defined in `_sources.yml`. If Silver data is stale (the latest timestamp is too far from the reference cutoff), the DAG stops before a dbt run that would produce outdated Gold tables.
+
+**D3: Gold vs Silver row count validation** (`validate_gold_row_counts`, after `gold_dbt_run`): reads staging model row counts from dbt's `run_results.json` (produced during dbt run, no extra Athena scan) and compares them to the Silver CloudWatch metrics. If any staging model has lost more than 5% of its Silver rows, the DAG fails before `gold_dbt_test`. The 5% tolerance accounts for rows legitimately quarantined during Silver validation.
+
+---
+
+### Scalability
+
+All six Silver Glue jobs run in parallel in a single Airflow task group. Adding more Silver jobs in future only requires adding their name to `silver_job_names` — the parallel execution pattern already handles N jobs without code changes.
+
+DAG changes deploy in seconds via S3 sync and take effect on the next task without restarting the MWAA environment or waiting for a package update.
+
+---
+
+### Observability
+
+**Not yet implemented:** Dead letter queue for task failures (E1). Task failures currently log to MWAA CloudWatch log groups with a 30-day retention window. If a failure is not reviewed within that window, the record is gone. A persistent DLQ (SNS topic + SQS queue with an `on_failure_callback`) would create a queryable failure inbox that operators must explicitly acknowledge.
