@@ -6,7 +6,7 @@ This repository is part of the [Enterprise Data Platform](https://github.com/ent
 
 ---
 
-**Orchestrator note:** The platform supports two pipeline orchestrators that run the same pipeline steps: 6 Silver Glue jobs, Silver Glue Crawler, dbt run and test, dbt artifact upload. This repo covers the **MWAA (Amazon Managed Workflows for Apache Airflow) path**, which provides a managed Airflow environment with a visual task dependency graph in the Airflow UI. For daily development sessions where fast startup is the priority, the platform uses **AWS Step Functions** instead: the `modules/step-functions` Terraform module creates a state machine that starts immediately with no 25-minute MWAA startup wait and costs a fraction of a cent per run. Both orchestrators produce the same Gold data and drive the same Analytics Agent. To switch between them, comment/uncomment the relevant module block in `terraform-platform-infra-live/environments/dev/main.tf` and re-run `terraform apply`.
+**Orchestrator note:** The platform supports two pipeline orchestrators that run the same pipeline steps: 6 Silver Glue jobs, Silver Glue Crawler, dbt run and test, dbt artifact upload. This repo covers the **MWAA (Amazon Managed Workflows for Apache Airflow) path**, which provides a managed Airflow environment with a visual task dependency graph in the Airflow UI. For daily development sessions where fast startup is the priority, the platform uses **AWS Step Functions** instead: the `modules/step-functions` Terraform module creates a state machine that starts immediately with no 25-minute MWAA startup wait and costs a fraction of a cent per run. Both orchestrators produce the same Gold data and drive the same Analytics Agent. Select `step-functions` or `mwaa` in the Session Start workflow rather than editing Terraform by hand.
 
 ---
 
@@ -30,7 +30,7 @@ platform-orchestration-mwaa-airflow/
 └── .github/
     └── workflows/
         ├── ci.yml             ← validate DAG on every PR and push
-        └── deploy.yml         ← sync to MWAA S3 bucket on merge to main
+        └── deploy.yml         ← manually sync to MWAA S3 bucket after CI passes
 ```
 
 ## Local development
@@ -297,9 +297,9 @@ Two jobs run in parallel:
 
 No real AWS calls happen in CI. The DAG uses `Variable.get("mwaa_env", default_var="dev")` so it parses without a live Airflow database or AWS connection.
 
-### On merge to main
+### After CI passes on main
 
-The deploy workflow triggers automatically after CI passes. It syncs `dags/` to the MWAA S3 (Simple Storage Service) bucket in dev. MWAA picks up new DAG files within ~30 seconds. That is the entire deploy. The workflow never uploads `requirements.txt` and never calls `aws mwaa update-environment`. Python packages are managed by Terraform. Authentication uses OIDC (OpenID Connect), no long-lived AWS credentials are stored anywhere. To update dbt on MWAA workers, push to `platform-dbt-analytics` (S3 sync, seconds, no MWAA update).
+Trigger the deploy workflow manually from GitHub Actions and choose the target environment. It syncs `dags/` to the MWAA S3 (Simple Storage Service) bucket. MWAA picks up new DAG files within ~30 seconds. That is the entire deploy. The workflow never uploads `requirements.txt` and never calls `aws mwaa update-environment`. Python packages are managed by Terraform. Authentication uses OIDC (OpenID Connect), no long-lived AWS credentials are stored anywhere. To update dbt on MWAA workers, run the manual deploy in `platform-dbt-analytics` (S3 sync, seconds, no MWAA update).
 
 ### Promotion to staging and prod
 

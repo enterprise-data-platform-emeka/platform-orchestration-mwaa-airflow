@@ -19,16 +19,26 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.env.example'
-      - 'plugins.zip'
+    paths:
+      - 'dags/**'
+      - 'plugins/**'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'entrypoint.sh'
+      - 'Makefile'
+      - '.github/workflows/**'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.env.example'
-      - 'plugins.zip'
+    paths:
+      - 'dags/**'
+      - 'plugins/**'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'entrypoint.sh'
+      - 'Makefile'
+      - '.github/workflows/**'
 
 jobs:
   # --------------------------------------------------------------------------

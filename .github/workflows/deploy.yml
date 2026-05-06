@@ -25,10 +25,9 @@ name: Deploy
 # environment update which takes ~35 minutes. Only change it when necessary.
 #
 # Triggers:
-#   - push to main    → CI completes successfully → automatically deploys to dev
-#   - workflow_dispatch → manually deploys to staging or prod
+#   - workflow_dispatch → manually deploys to the selected environment
 #
-# Promotion path: dev (auto) → staging (manual) → prod (manual + approval)
+# Promotion path: dev (manual) → staging (manual) → prod (manual + approval)
 #
 # AWS authentication uses OIDC (OpenID Connect), no long-lived access keys
 # are stored in GitHub secrets.
@@ -41,14 +40,6 @@ name: Deploy
 #     prod: add required reviewers + deployment protection rules
 
 on:
-  # Triggers only after CI completes successfully on main.
-  # This ensures the DAG validates cleanly before reaching production MWAA.
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
-
-  # Manual trigger for deploying to staging or prod.
   workflow_dispatch:
     inputs:
       environment:
@@ -62,10 +53,6 @@ jobs:
     name: Deploy to ${{ inputs.environment || 'dev' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'dev' }}
-
-    # When triggered by workflow_run, only proceed if CI actually passed.
-    # workflow_dispatch bypasses this check, manual deploys are intentional.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     permissions:
       # id-token: write is required for OIDC authentication to AWS.
