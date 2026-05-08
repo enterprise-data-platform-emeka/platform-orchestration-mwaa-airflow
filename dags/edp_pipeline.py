@@ -340,7 +340,7 @@ with DAG(
     # Shared dbt configuration
     # -----------------------------------------------------------------------
 
-    aws_account_id = Variable.get("aws_account_id")
+    aws_account_id = Variable.get("aws_account_id", default_var="")
     athena_results_bucket = f"edp-{mwaa_env}-{aws_account_id}-athena-results"
 
     dbt_env = {
