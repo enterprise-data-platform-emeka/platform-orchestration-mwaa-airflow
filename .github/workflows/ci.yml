@@ -27,7 +27,6 @@ on:
       - 'docker-compose.yml'
       - 'entrypoint.sh'
       - 'Makefile'
-      - '.github/workflows/**'
   pull_request:
     branches: [main]
     # No path filter — CI runs on every PR so required checks always report.
@@ -52,7 +51,6 @@ jobs:
               - 'docker-compose.yml'
               - 'entrypoint.sh'
               - 'Makefile'
-              - '.github/workflows/**'
 
   # --------------------------------------------------------------------------
   # Quality: ruff lint + bandit security scan
