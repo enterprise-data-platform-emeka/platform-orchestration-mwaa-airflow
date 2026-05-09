@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>platform-orchestration-mwaa-airflow — HTML README</title>
+  <style>
+    :root {
+      --accent: #9333ea;
+      --page: #f8fafc;
+      --surface: #ffffff;
+      --surface-soft: #f1f5f9;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #d8e2ee;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 12%, transparent), transparent 34rem),
+        var(--page);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.9rem 1.4rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(14px);
+    }
+    .brand { display: flex; align-items: center; gap: 0.75rem; font-weight: 900; }
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--accent);
+      box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 28%, transparent);
+      font-size: 0.8rem;
+    }
+    .nav { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .nav a {
+      padding: 0.52rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 750;
+    }
+    .wrap { width: min(1180px, calc(100vw - 2rem)); margin: 0 auto; padding: 1.2rem 0 4rem; }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+      gap: 1rem;
+      align-items: stretch;
+      margin-top: 1rem;
+    }
+    .hero-card, .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: var(--shadow);
+    }
+    .hero-card { padding: 2rem; }
+    .eyebrow {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.72rem;
+      font-weight: 950;
+    }
+    h1 {
+      margin: 0.45rem 0 0.8rem;
+      max-width: 820px;
+      font-size: clamp(2.2rem, 5vw, 4.4rem);
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+    }
+    .intro { max-width: 820px; color: var(--muted); font-size: 1.03rem; line-height: 1.65; }
+    .meta {
+      display: grid;
+      gap: 0.7rem;
+      padding: 1rem;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1rem;
+      background: var(--surface-soft);
+    }
+    .metric span { display: block; color: var(--muted); font-size: 0.78rem; font-weight: 750; }
+    .metric strong { display: block; margin-top: 0.35rem; font-size: 1.6rem; color: var(--ink); }
+    .diagram { margin: 1rem 0; overflow: hidden; border-radius: 22px; border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .diagram svg { display: block; width: 100%; height: auto; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .panel { padding: 1.1rem; }
+    .panel h2, .panel h3 { margin: 0; }
+    .panel h2 { font-size: 1.25rem; }
+    .panel h3 { font-size: 1rem; }
+    .panel p { color: var(--muted); line-height: 1.58; }
+    .section-card {
+      min-height: 170px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      border-top: 4px solid var(--accent);
+    }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.42rem 0.62rem;
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--accent) 7%, #fff);
+      color: #1f2937;
+      font-size: 0.83rem;
+      font-weight: 750;
+    }
+    .command-list { display: grid; gap: 0.55rem; margin-top: 0.9rem; }
+    code {
+      display: block;
+      padding: 0.74rem 0.85rem;
+      border-radius: 12px;
+      background: #111827;
+      color: #f8fafc;
+      overflow-wrap: anywhere;
+      font-family: "SFMono-Regular", "JetBrains Mono", monospace;
+      font-size: 0.84rem;
+    }
+    .wide { grid-column: 1 / -1; }
+    .footer { margin-top: 1.5rem; color: var(--muted); text-align: center; font-size: 0.9rem; }
+    @media (max-width: 900px) {
+      .hero, .grid { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      h1 { font-size: 2.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="mark">EDP</div><span>platform-orchestration-mwaa-airflow</span></div>
+    <nav class="nav">
+      <a href="../README.md">README.md</a>
+      <a href="#diagram">Diagram</a>
+      <a href="#sections">Sections</a>
+      <a href="#commands">Commands</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="hero-card">
+        <div class="eyebrow">Managed Airflow orchestration path</div>
+        <h1>platform-orchestration-mwaa-airflow</h1>
+        <p class="intro">This repository is part of the Enterprise Data Platform. For the full project overview, architecture diagram, and build order, start there.</p>
+        <div class="pill-row">
+          <span class="pill">MWAA</span><span class="pill">Airflow</span><span class="pill">Glue</span><span class="pill">dbt</span><span class="pill">S3</span><span class="pill">CloudWatch</span>
+        </div>
+      </div>
+      <aside class="panel meta" aria-label="README summary">
+        <div class="metric"><span>README length</span><strong>345</strong></div>
+        <div class="metric"><span>Major sections</span><strong>8</strong></div>
+        <div class="metric"><span>Code examples</span><strong>14</strong></div>
+        <div class="metric"><span>Tables</span><strong>10</strong></div>
+      </aside>
+    </section>
+
+    <section id="diagram" class="diagram">
+      
+    <svg viewBox="0 0 1120 260" role="img" aria-label="Repository workflow diagram">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L8,3 z" fill="#9333ea"/>
+        </marker>
+        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+          <stop stop-color="#9333ea" stop-opacity="0.12"/>
+          <stop offset="1" stop-color="#ffffff" stop-opacity="1"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="1120" height="260" rx="24" fill="url(#bg)"/>
+      <text x="32" y="48" fill="#0f172a" font-size="24" font-weight="900">How this repository fits into the platform</text>
+      <text x="32" y="76" fill="#475569" font-size="14">A compact visual reading path distilled from the README.</text>
+      
+        <g>
+          <rect x="24" y="96" width="158" height="72" rx="16" fill="#ffffff" stroke="#d8e2ee"/>
+          <circle cx="48" cy="132" r="12" fill="#9333ea" opacity="0.14"/>
+          <circle cx="48" cy="132" r="5" fill="#9333ea"/>
+          <text x="68" y="127" fill="#0f172a" font-size="15" font-weight="800">DAG</text>
+          <text x="68" y="148" fill="#64748b" font-size="12">Step 1</text>
+          <path d="M 186 130 L 198 130" stroke="#9333ea" stroke-width="3" marker-end="url(#arrow)" opacity="0.72"/>
+        </g>
+        <g>
+          <rect x="206" y="96" width="158" height="72" rx="16" fill="#ffffff" stroke="#d8e2ee"/>
+          <circle cx="230" cy="132" r="12" fill="#9333ea" opacity="0.14"/>
+          <circle cx="230" cy="132" r="5" fill="#9333ea"/>
+          <text x="250" y="127" fill="#0f172a" font-size="15" font-weight="800">Silver jobs</text>
+          <text x="250" y="148" fill="#64748b" font-size="12">Step 2</text>
+          <path d="M 368 130 L 380 130" stroke="#9333ea" stroke-width="3" marker-end="url(#arrow)" opacity="0.72"/>
+        </g>
+        <g>
+          <rect x="388" y="96" width="158" height="72" rx="16" fill="#ffffff" stroke="#d8e2ee"/>
+          <circle cx="412" cy="132" r="12" fill="#9333ea" opacity="0.14"/>
+          <circle cx="412" cy="132" r="5" fill="#9333ea"/>
+          <text x="432" y="127" fill="#0f172a" font-size="15" font-weight="800">Crawler</text>
+          <text x="432" y="148" fill="#64748b" font-size="12">Step 3</text>
+          <path d="M 550 130 L 562 130" stroke="#9333ea" stroke-width="3" marker-end="url(#arrow)" opacity="0.72"/>
+        </g>
+        <g>
+          <rect x="570" y="96" width="158" height="72" rx="16" fill="#ffffff" stroke="#d8e2ee"/>
+          <circle cx="594" cy="132" r="12" fill="#9333ea" opacity="0.14"/>
+          <circle cx="594" cy="132" r="5" fill="#9333ea"/>
+          <text x="614" y="127" fill="#0f172a" font-size="15" font-weight="800">dbt run</text>
+          <text x="614" y="148" fill="#64748b" font-size="12">Step 4</text>
+          <path d="M 732 130 L 744 130" stroke="#9333ea" stroke-width="3" marker-end="url(#arrow)" opacity="0.72"/>
+        </g>
+        <g>
+          <rect x="752" y="96" width="158" height="72" rx="16" fill="#ffffff" stroke="#d8e2ee"/>
+          <circle cx="776" cy="132" r="12" fill="#9333ea" opacity="0.14"/>
+          <circle cx="776" cy="132" r="5" fill="#9333ea"/>
+          <text x="796" y="127" fill="#0f172a" font-size="15" font-weight="800">dbt test</text>
+          <text x="796" y="148" fill="#64748b" font-size="12">Step 5</text>
+          <path d="M 914 130 L 926 130" stroke="#9333ea" stroke-width="3" marker-end="url(#arrow)" opacity="0.72"/>
+        </g>
+        <g>
+          <rect x="934" y="96" width="158" height="72" rx="16" fill="#ffffff" stroke="#d8e2ee"/>
+          <circle cx="958" cy="132" r="12" fill="#9333ea" opacity="0.14"/>
+          <circle cx="958" cy="132" r="5" fill="#9333ea"/>
+          <text x="978" y="127" fill="#0f172a" font-size="15" font-weight="800">Gold ready</text>
+          <text x="978" y="148" fill="#64748b" font-size="12">Step 6</text>
+          
+        </g>
+    </svg>
+    </section>
+
+    <section class="grid" id="sections">
+      <article class="panel wide">
+        <div class="eyebrow">README compressed</div>
+        <h2>Read this page first, then use README.md for exact commands and edge cases.</h2>
+        <p>This HTML explainer keeps the same intent as the root README but converts the long-form markdown into a visual map, compact summaries, and a short workflow reference.</p>
+      </article>
+      
+      <article class="panel section-card">
+        <h3>Repository layout</h3>
+        <p>Core README section covering this part of the repository.</p>
+      </article>
+      <article class="panel section-card">
+        <h3>Local development</h3>
+        <p>I use the official AWS MWAA local runner to develop and test DAG changes before pushing to MWAA. The local runner runs the same amazon/mwaa-local:2 9 Docker image that MWAA uses in production, so import errors and provider compatibility problems surface locall</p>
+      </article>
+      <article class="panel section-card">
+        <h3>DAG overview</h3>
+        <p>DAG ID: edp pipeline Schedule: 0 6 (06:00 UTC daily) Catchup: disabled (no backfill on first deploy) Max active runs: 1 (prevents overlapping pipeline runs) Task breakdown Step Functions state machine (default daily orchestrator) The same pipeline runs as an A</p>
+      </article>
+      <article class="panel section-card">
+        <h3>MWAA environment and DAG</h3>
+        <p>The edp-dev-mwaa environment runs Airflow 2.9.2 on MWAA. After the DAG deploys, the full pipeline runs end-to-end with all 11 tasks green. ---</p>
+      </article>
+      <article class="panel section-card">
+        <h3>How to deploy to MWAA</h3>
+        <p>The CI/CD pipeline handles all deployment automatically. Here&#039;s how it works: What each repo owns Artifact Owner Update cost --- --- --- DAGs ( dags/ ) This repo ~30 seconds (S3 sync) requirements.txt Terraform ( modules/orchestration/requirements.txt ) ~35 mi</p>
+      </article>
+      <article class="panel section-card">
+        <h3>Updating Python packages</h3>
+        <p>Python packages for MWAA are managed by Terraform, not by this repo&#039;s CI. To add or change a package: 1. Check it against the MWAA 2.9.2 constraints file: https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.11.txt 2. Test the insta</p>
+      </article>
+      <article class="panel section-card">
+        <h3>CI/CD</h3>
+        <p>CI skips runs triggered by README, .env.example , or plugins.zip changes. Only DAG code, plugins, requirements, and workflow file changes trigger the pipeline. On every pull request and push to main Two jobs run in parallel: Job What it checks --- --- Lint and</p>
+      </article>
+      <article class="panel section-card">
+        <h3>Enterprise qualities</h3>
+        <p>Pipeline reliability The DAG uses retries=1 with a 5-minute delay on all tasks. This handles the most common transient failures (AWS API throttling, momentary network blips) without cascading retries. max active runs=1 prevents two pipeline runs from overlappi</p>
+      </article>
+    </section>
+
+    <section class="grid" id="commands">
+      <article class="panel">
+        <div class="eyebrow">Typical workflow</div>
+        <h2>Command path</h2>
+        <p>Representative commands surfaced from the README. Use the original README for complete setup and environment-specific values.</p>
+      </article>
+      <article class="panel wide">
+        <div class="command-list">
+          <code>platform-orchestration-mwaa-airflow/</code><code>├── dags/</code><code>│   └── edp_pipeline.py        ← main orchestration DAG</code><code>├── plugins/</code><code>│   └── __init__.py            ← required by MWAA, empty</code><code>├── dbt/                       ← mount point for platform-dbt-analytics (gitignored)</code>
+        </div>
+      </article>
+    </section>
+
+    <p class="footer">Generated from README.md. Existing markdown remains the source of truth.</p>
+  </main>
+</body>
+</html>
