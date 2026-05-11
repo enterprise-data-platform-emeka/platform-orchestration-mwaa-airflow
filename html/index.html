@@ -1,277 +1,613 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>platform-orchestration-mwaa-airflow — Visual README</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>platform-orchestration-mwaa-airflow | Visual README</title>
   <style>
     :root {
-      --accent: #2563eb;
+      --ink: #101828;
+      --muted: #667085;
+      --page: #f6f8fb;
+      --surface: rgba(255,255,255,.92);
+      --line: #d8e2ef;
+      --blue: #2563eb;
+      --blue-soft: #eaf2ff;
       --teal: #0f766e;
-      --violet: #7c3aed;
-      --ink: #0f172a;
-      --muted: #526175;
-      --page: #f5f8fb;
-      --surface: rgba(255,255,255,0.9);
-      --soft: #eef4fa;
-      --line: #d6e0ec;
-      --shadow: 0 22px 70px rgba(15,23,42,0.11);
+      --teal-soft: #e7f6f3;
+      --olive: #556b2f;
+      --olive-soft: #f1f5e9;
+      --amber: #b7791f;
+      --amber-soft: #fff6df;
+      --rose: #b42318;
+      --rose-soft: #fff0ef;
+      --slate: #344054;
+      --shadow: 0 24px 80px rgba(16,24,40,.12);
+      --soft-shadow: 0 12px 34px rgba(16,24,40,.08);
     }
+
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
       color: var(--ink);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:
-        linear-gradient(rgba(37,99,235,0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(37,99,235,0.035) 1px, transparent 1px),
-        radial-gradient(circle at 8% 0%, rgba(37,99,235,0.16), transparent 34rem),
-        radial-gradient(circle at 92% 8%, rgba(15,118,110,0.13), transparent 32rem),
+        linear-gradient(rgba(37,99,235,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37,99,235,.035) 1px, transparent 1px),
+        radial-gradient(circle at 12% -8%, rgba(37,99,235,.14), transparent 32rem),
+        radial-gradient(circle at 92% 4%, rgba(15,118,110,.12), transparent 30rem),
+        radial-gradient(circle at 56% 110%, rgba(85,107,47,.10), transparent 36rem),
         var(--page);
-      background-size: 44px 44px, 44px 44px, auto, auto, auto;
+      background-size: 44px 44px, 44px 44px, auto, auto, auto, auto;
     }
-    a { color: var(--accent); text-decoration: none; }
+
+    a { color: inherit; text-decoration: none; }
     .topbar {
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 20;
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
       gap: 1rem;
-      padding: 0.85rem 1.4rem;
+      padding: .85rem 1.25rem;
       border-bottom: 1px solid var(--line);
-      background: rgba(255,255,255,0.88);
+      background: rgba(255,255,255,.88);
       backdrop-filter: blur(18px);
     }
-    .brand { display: flex; align-items: center; gap: 0.75rem; font-weight: 950; }
-    .mark { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, var(--accent), var(--teal)); color: #fff; box-shadow: 0 14px 28px rgba(37,99,235,0.25); font-size: 0.78rem; }
-    .nav { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .nav a { padding: 0.52rem 0.78rem; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,0.82); color: var(--muted); font-weight: 850; font-size: 0.86rem; }
-    .wrap { width: min(1240px, calc(100vw - 2rem)); margin: 0 auto; padding: 1.2rem 0 4rem; }
-    .hero { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(280px,0.65fr); gap: 1rem; margin: 1rem 0; }
-    .hero-card, .panel, .diagram-card, .concept-card, .section-tile {
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: .72rem;
+      min-width: 0;
+      font-weight: 950;
+      letter-spacing: -.02em;
+    }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: #fff;
+      font-size: .78rem;
+      font-weight: 950;
+      background: linear-gradient(135deg, var(--blue), var(--teal));
+      box-shadow: 0 14px 32px rgba(37,99,235,.28);
+    }
+    .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+    .nav a {
+      padding: .55rem .8rem;
       border: 1px solid var(--line);
-      border-radius: 24px;
+      border-radius: 999px;
+      color: #344054;
+      background: rgba(255,255,255,.78);
+      font-size: .84rem;
+      font-weight: 850;
+      box-shadow: 0 8px 18px rgba(16,24,40,.04);
+    }
+    .nav a:hover { border-color: #b8cdf0; color: var(--blue); background: #fff; }
+    .wrap { width: min(1320px, calc(100vw - 2rem)); margin: 0 auto; padding: 1.25rem 0 4rem; }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr);
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .card, .diagram-card, .concept {
+      border: 1px solid var(--line);
+      border-radius: 28px;
       background: var(--surface);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
+      overflow: hidden;
     }
-    .hero-card { padding: 2.1rem; background: linear-gradient(135deg, rgba(37,99,235,0.08), rgba(15,118,110,0.06) 45%, rgba(255,255,255,0.96)); }
-    .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; font-weight: 950; }
-    h1 { margin: 0.45rem 0 0.75rem; font-size: clamp(2.2rem,5vw,4.5rem); line-height: 0.95; letter-spacing: -0.045em; }
-    h2 { margin: 0.35rem 0 0.7rem; font-size: clamp(1.35rem,3vw,2.1rem); letter-spacing: -0.035em; }
-    h3 { margin: 0; font-size: 1.02rem; }
-    p { color: var(--muted); line-height: 1.58; }
-    .tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
-    .tags span { padding: 0.45rem 0.68rem; border-radius: 999px; border: 1px solid rgba(37,99,235,0.22); background: rgba(37,99,235,0.07); font-size: 0.83rem; font-weight: 850; color: #1f2937; }
-    .stats { display: grid; gap: 0.75rem; padding: 1rem; }
-    .metric { padding: 0.95rem; border: 1px solid var(--line); border-radius: 16px; background: var(--soft); }
-    .metric span { display: block; color: var(--muted); font-size: 0.76rem; font-weight: 850; }
-    .metric strong { display: block; margin-top: 0.25rem; font-size: 1.55rem; }
-    .diagram-card { margin: 1rem 0; overflow-x: auto; background: #fff; }
-    .diagram-card header { padding: 1.1rem 1.2rem 0; }
-    .diagram-card svg { display: block; min-width: 980px; width: 100%; height: auto; }
-    .diagram-heading { fill: var(--ink); font-size: 24px; font-weight: 950; }
-    .diagram-subtitle { fill: var(--muted); font-size: 14px; }
-    .arch-node, .flow-node, .actor-box { fill: #fff; stroke: #bfdbfe; stroke-width: 1.5; }
-    .arch-node.active { stroke: var(--accent); stroke-width: 3; filter: drop-shadow(0 8px 18px rgba(37,99,235,0.24)); }
-    .node-title, .actor-label { fill: var(--ink); font-size: 13px; font-weight: 900; }
-    .node-sub { fill: var(--muted); font-size: 11px; font-weight: 750; }
-    .layer-label { fill: #334155; font-size: 12px; font-weight: 900; }
-    .swimlane { stroke: #bfdbfe; stroke-width: 2; }
-    .flow-arrow .hit { stroke: transparent; stroke-width: 18; fill: none; pointer-events: stroke; }
-    .flow-arrow .line { fill: none; stroke: #334155; stroke-width: 2.4; marker-end: url(#arrow-dark); transition: stroke .18s ease, stroke-width .18s ease, filter .18s ease; }
-    .flow-arrow.accent .line { stroke: var(--accent); marker-end: url(#arrow-accent); }
-    .flow-arrow.return .line { stroke: #64748b; stroke-dasharray: 6 6; }
-    .flow-arrow:hover .line { stroke: var(--accent); stroke-width: 4; stroke-dasharray: 12 8; animation: flowDash .8s linear infinite; filter: drop-shadow(0 0 8px rgba(37,99,235,.62)); marker-end: url(#arrow-accent); }
-    .flow-arrow text { fill: var(--ink); font-size: 12px; font-weight: 820; pointer-events: none; }
-    .flow-arrow:hover text { fill: var(--accent); font-weight: 950; }
-    @keyframes flowDash { to { stroke-dashoffset: -40; } }
-    .explain { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .75rem; padding: 0 1.2rem 1.2rem; }
-    .explain div, .concept-card { padding: .95rem; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.86); box-shadow: none; }
-    .explain strong, .concept-card h3 { display: block; margin-bottom: .28rem; }
-    .explain span, .concept-card p { color: var(--muted); font-size: .9rem; line-height: 1.45; }
-    .concept-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; margin: 1rem 0; }
-    .mini-flow { display: flex; gap: .45rem; align-items: center; flex-wrap: wrap; margin: .85rem 0; }
-    .mini-node { padding: .42rem .58rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: .78rem; font-weight: 850; }
-    .mini-arrow { color: var(--accent); font-weight: 950; }
-    .sections { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .85rem; margin-top: 1rem; }
-    .section-tile { padding: .95rem; box-shadow: none; display: flex; gap: .75rem; align-items: center; }
-    .section-tile span { color: var(--accent); font-size: .82rem; font-weight: 950; }
-    .section-tile strong { line-height: 1.3; }
-    .footer { color: var(--muted); text-align: center; font-size: .9rem; margin-top: 1.4rem; }
-    @media (max-width: 900px) {
-      .topbar { flex-direction: column; align-items: flex-start; }
-      .hero, .concept-grid, .sections, .explain { grid-template-columns: 1fr; }
-      .diagram-card svg { min-width: 920px; }
+    .hero-main {
+      padding: clamp(1.4rem, 4vw, 2.4rem);
+      background:
+        linear-gradient(135deg, rgba(37,99,235,.10), rgba(15,118,110,.07) 48%, rgba(255,255,255,.95)),
+        #fff;
+    }
+    .eyebrow {
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: .72rem;
+      font-weight: 950;
+    }
+    h1 {
+      margin: .42rem 0 .78rem;
+      max-width: 940px;
+      font-size: clamp(2.4rem, 6vw, 5.2rem);
+      line-height: .92;
+      letter-spacing: -.06em;
+    }
+    h2 {
+      margin: .35rem 0 .75rem;
+      font-size: clamp(1.55rem, 3vw, 2.5rem);
+      line-height: 1.02;
+      letter-spacing: -.045em;
+    }
+    h3 { margin: 0; font-size: 1.05rem; letter-spacing: -.02em; }
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
+    .hero-main p { max-width: 800px; font-size: 1.04rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.15rem; }
+    .tag {
+      display: inline-flex;
+      padding: .44rem .68rem;
+      border: 1px solid rgba(37,99,235,.22);
+      border-radius: 999px;
+      background: rgba(37,99,235,.07);
+      color: #1d2939;
+      font-size: .82rem;
+      font-weight: 850;
+    }
+    .quick-stats { display: grid; gap: .72rem; padding: 1rem; }
+    .metric {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 1rem;
+      padding: .95rem 1rem;
+      border: 1px solid #d9e4f3;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #fff, #edf4fc);
+    }
+    .metric span {
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .metric strong { font-size: 1.45rem; line-height: 1; }
+    .diagram-card { margin: 1rem 0; background: rgba(255,255,255,.94); }
+    .diagram-head { padding: 1.25rem 1.35rem .3rem; }
+    .svg-frame { overflow-x: auto; padding: .25rem; }
+    svg { display: block; width: 100%; min-width: 980px; height: auto; }
+    .diagram-note {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .75rem;
+      padding: .2rem 1.25rem 1.25rem;
+    }
+    .note {
+      padding: .95rem;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(248,251,255,.88);
+      box-shadow: 0 10px 26px rgba(16,24,40,.04);
+    }
+    .note strong { display: block; margin-bottom: .25rem; color: var(--ink); }
+    .note span { display: block; color: var(--muted); font-size: .9rem; line-height: 1.48; }
+    .node { fill: #fff; stroke: #bfd5f3; stroke-width: 1.6; filter: drop-shadow(0 8px 16px rgba(16,24,40,.08)); }
+    .node-blue { fill: var(--blue-soft); stroke: #9cc2ff; }
+    .node-teal { fill: var(--teal-soft); stroke: #86d7cd; }
+    .node-olive { fill: var(--olive-soft); stroke: #bdcda0; }
+    .node-amber { fill: var(--amber-soft); stroke: #f4c77a; }
+    .node-rose { fill: var(--rose-soft); stroke: #f2aaa5; }
+    .node-dark { fill: #172033; stroke: #172033; }
+    .title { fill: var(--ink); font-size: 15px; font-weight: 950; }
+    .small-title { fill: var(--ink); font-size: 12.5px; font-weight: 950; }
+    .sub { fill: var(--muted); font-size: 11.2px; font-weight: 760; }
+    .tiny { fill: var(--muted); font-size: 10px; font-weight: 750; }
+    .white-text { fill: #fff; }
+    .pill-text { fill: #344054; font-size: 12px; font-weight: 900; }
+    .flow .hit { fill: none; stroke: transparent; stroke-width: 20; pointer-events: stroke; }
+    .flow .line {
+      fill: none;
+      stroke: #344054;
+      stroke-width: 2.5;
+      marker-end: url(#arrow-slate);
+      transition: stroke .16s ease, stroke-width .16s ease, filter .16s ease;
+    }
+    .flow.blue .line { stroke: var(--blue); marker-end: url(#arrow-blue); }
+    .flow.teal .line { stroke: var(--teal); marker-end: url(#arrow-teal); }
+    .flow.olive .line { stroke: var(--olive); marker-end: url(#arrow-olive); }
+    .flow.return .line { stroke: #667085; stroke-dasharray: 7 7; }
+    .flow:hover .line {
+      stroke: var(--blue);
+      stroke-width: 4.2;
+      stroke-dasharray: 13 8;
+      animation: dash 800ms linear infinite;
+      filter: drop-shadow(0 0 9px rgba(37,99,235,.68));
+      marker-end: url(#arrow-blue);
+    }
+    .flow text { fill: #1d2939; font-size: 12px; font-weight: 850; pointer-events: none; }
+    .flow:hover text { fill: var(--blue); font-weight: 950; }
+    @keyframes dash { to { stroke-dashoffset: -42; } }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0; }
+    .concept { padding: 1rem; box-shadow: var(--soft-shadow); }
+    .concept h3 { margin-bottom: .45rem; }
+    .concept p { font-size: .94rem; }
+    .mini-flow { display: flex; flex-wrap: wrap; align-items: center; gap: .42rem; margin: .72rem 0 .82rem; }
+    .mini-node {
+      padding: .42rem .58rem;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: #344054;
+      font-size: .78rem;
+      font-weight: 850;
+    }
+    .mini-arrow { color: var(--blue); font-weight: 950; }
+    .repo-links { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1rem; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: .7rem .95rem;
+      border: 1px solid #bdcbe0;
+      border-radius: 14px;
+      background: #fff;
+      color: #344054;
+      font-weight: 900;
+      box-shadow: 0 10px 24px rgba(16,24,40,.07);
+    }
+    .button.primary { color: #fff; border-color: #1d4ed8; background: linear-gradient(135deg, #2563eb, #0f766e); }
+    .footer { margin-top: 2rem; color: var(--muted); text-align: center; font-size: .9rem; }
+    @media (max-width: 960px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .nav { justify-content: flex-start; }
+      .hero, .diagram-note, .grid { grid-template-columns: 1fr; }
+      svg { min-width: 900px; }
+      .wrap { width: min(100% - 1rem, 1320px); }
     }
   </style>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><div class="mark">EDP</div><span>platform-orchestration-mwaa-airflow</span></div>
-    <nav class="nav">
+    <a class="brand" href="https://github.com/enterprise-data-platform-emeka/platform-orchestration-mwaa-airflow">
+      <span class="brand-mark">EDP</span>
+      <span>platform-orchestration-mwaa-airflow</span>
+    </a>
+    <nav class="nav" aria-label="Page navigation">
       <a href="https://github.com/enterprise-data-platform-emeka/platform-orchestration-mwaa-airflow/blob/main/README.md">README.md</a>
-      <a href="#architecture">Architecture</a>
-      <a href="#repo-flow">Repo Flow</a>
-      <a href="#concepts">Concepts</a>
+      <a href="#platform">Platform</a>
+      <a href="#dag">DAG</a>
+      <a href="#gates">Gates</a>
+      <a href="#deploy">Deploy</a>
+      <a href="#orchestrators">Orchestrators</a>
     </nav>
   </header>
+
   <main class="wrap">
     <section class="hero">
-      <div class="hero-card">
-        <div class="eyebrow">Visual README</div>
-        <h1>platform-orchestration-mwaa-airflow</h1>
-        <p>Managed Airflow DAG that coordinates Silver and Gold pipeline execution on MWAA.</p>
-        <div class="tags"><span>MWAA</span><span>Airflow DAG</span><span>Glue fan-out</span><span>dbt run</span><span>Artifact upload</span></div>
+      <div class="card hero-main">
+        <div class="eyebrow">MWAA Airflow orchestration path</div>
+        <h1>The pipeline control plane for Silver and Gold.</h1>
+        <p>
+          This repository owns the Airflow DAG that coordinates six parallel Glue jobs, validates Silver row counts,
+          refreshes the Glue Catalog, runs dbt against Athena, validates Gold, and leaves the platform ready for
+          Streamlit, the custom HTML dashboard, and Slack analytics.
+        </p>
+        <div class="tags">
+          <span class="tag">MWAA 2.9.2</span>
+          <span class="tag">Airflow DAG</span>
+          <span class="tag">Glue fan-out</span>
+          <span class="tag">dbt gates</span>
+          <span class="tag">S3 deploy</span>
+          <span class="tag">No routine MWAA update</span>
+        </div>
       </div>
-      <aside class="panel stats">
-        <div class="metric"><span>README lines</span><strong>346</strong></div>
-        <div class="metric"><span>Major sections</span><strong>8</strong></div>
-        <div class="metric"><span>Code examples</span><strong>14</strong></div>
-        <div class="metric"><span>Table rows</span><strong>19</strong></div>
+      <aside class="card quick-stats">
+        <div class="metric"><span>Silver jobs</span><strong>6</strong></div>
+        <div class="metric"><span>Validation gates</span><strong>3</strong></div>
+        <div class="metric"><span>Schedule</span><strong>06:00 UTC</strong></div>
+        <div class="metric"><span>Max active runs</span><strong>1</strong></div>
       </aside>
     </section>
 
-    <section class="diagram-card" id="architecture">
-      <header>
-        <div class="eyebrow">End-to-end architecture</div>
-        <h2>Where this repo sits in the full platform</h2>
-      </header>
-      
-      <svg viewBox="0 0 1230 500" role="img" aria-label="End-to-end Enterprise Data Platform architecture">
-        <defs>
-          <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
-          <marker id="arrow-accent" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
-        </defs>
-        <rect x="0" y="0" width="1230" height="500" rx="28" fill="#f8fbff"/>
-        <text x="40" y="44" class="diagram-heading">Complete platform path</text>
-        <text x="40" y="70" class="diagram-subtitle">Source changes become trusted Gold marts, then three stakeholder frontends use the same governed analytics backend.</text>
-        <g><rect class="arch-node" x="55" y="84" width="130" height="68" rx="16"/><text x="120" y="114" text-anchor="middle" class="node-title">PostgreSQL</text><text x="120" y="134" text-anchor="middle" class="node-sub">Source OLTP</text></g><g><rect class="arch-node" x="220" y="84" width="130" height="68" rx="16"/><text x="285" y="114" text-anchor="middle" class="node-title">DMS CDC</text><text x="285" y="134" text-anchor="middle" class="node-sub">Change capture</text></g><g><rect class="arch-node" x="385" y="84" width="130" height="68" rx="16"/><text x="450" y="114" text-anchor="middle" class="node-title">Bronze S3</text><text x="450" y="134" text-anchor="middle" class="node-sub">Raw events</text></g><g><rect class="arch-node" x="550" y="84" width="130" height="68" rx="16"/><text x="615" y="114" text-anchor="middle" class="node-title">Glue PySpark</text><text x="615" y="134" text-anchor="middle" class="node-sub">Clean + reconcile</text></g><g><rect class="arch-node" x="715" y="84" width="130" height="68" rx="16"/><text x="780" y="114" text-anchor="middle" class="node-title">Silver S3</text><text x="780" y="134" text-anchor="middle" class="node-sub">Star schema</text></g><g><rect class="arch-node" x="880" y="84" width="130" height="68" rx="16"/><text x="945" y="114" text-anchor="middle" class="node-title">dbt / Athena</text><text x="945" y="134" text-anchor="middle" class="node-sub">Gold models</text></g><g><rect class="arch-node" x="1045" y="84" width="130" height="68" rx="16"/><text x="1110" y="114" text-anchor="middle" class="node-title">Gold S3</text><text x="1110" y="134" text-anchor="middle" class="node-sub">Business marts</text></g><g><rect class="arch-node" x="545" y="260" width="130" height="68" rx="16"/><text x="610" y="290" text-anchor="middle" class="node-title">FastAPI Agent</text><text x="610" y="310" text-anchor="middle" class="node-sub">SQL + guardrails</text></g><g><rect class="arch-node" x="280" y="390" width="130" height="68" rx="16"/><text x="345" y="420" text-anchor="middle" class="node-title">Streamlit UI</text><text x="345" y="440" text-anchor="middle" class="node-sub">Current UI</text></g><g><rect class="arch-node" x="545" y="390" width="130" height="68" rx="16"/><text x="610" y="420" text-anchor="middle" class="node-title">HTML Dashboard</text><text x="610" y="440" text-anchor="middle" class="node-sub">Custom UI</text></g><g><rect class="arch-node" x="810" y="390" width="130" height="68" rx="16"/><text x="875" y="420" text-anchor="middle" class="node-title">Slack MCP</text><text x="875" y="440" text-anchor="middle" class="node-sub">Chat entry</text></g>
-        <g class="flow-arrow"><path class="hit" d="M185 118 L220 118"/><path class="line" d="M185 118 L220 118"/></g><g class="flow-arrow"><path class="hit" d="M350 118 L385 118"/><path class="line" d="M350 118 L385 118"/></g><g class="flow-arrow"><path class="hit" d="M515 118 L550 118"/><path class="line" d="M515 118 L550 118"/></g><g class="flow-arrow"><path class="hit" d="M680 118 L715 118"/><path class="line" d="M680 118 L715 118"/></g><g class="flow-arrow"><path class="hit" d="M845 118 L880 118"/><path class="line" d="M845 118 L880 118"/></g><g class="flow-arrow"><path class="hit" d="M1010 118 L1045 118"/><path class="line" d="M1010 118 L1045 118"/></g><g class="flow-arrow"><path class="hit" d="M1110 152 L610 260"/><path class="line" d="M1110 152 L610 260"/></g><g class="flow-arrow"><path class="hit" d="M545 328 L345 390"/><path class="line" d="M545 328 L345 390"/></g><g class="flow-arrow"><path class="hit" d="M610 328 L610 390"/><path class="line" d="M610 328 L610 390"/></g><g class="flow-arrow"><path class="hit" d="M675 328 L875 390"/><path class="line" d="M675 328 L875 390"/></g><g class="flow-arrow"><path class="hit" d="M345 390 L545 328"/><path class="line" d="M345 390 L545 328"/></g><g class="flow-arrow"><path class="hit" d="M610 390 L610 328"/><path class="line" d="M610 390 L610 328"/></g><g class="flow-arrow"><path class="hit" d="M875 390 L675 328"/><path class="line" d="M875 390 L675 328"/></g>
-        <rect x="498" y="224" width="228" height="132" rx="24" fill="rgba(37,99,235,0.06)" stroke="#bfdbfe"/>
-        <text x="612" y="242" text-anchor="middle" class="layer-label">Analytics serving layer</text>
-        <rect x="238" y="362" width="780" height="92" rx="24" fill="rgba(15,118,110,0.05)" stroke="#ccfbf1"/>
-        <text x="628" y="478" text-anchor="middle" class="layer-label">Frontends: Streamlit, custom HTML, and Slack all converge on FastAPI</text>
-      </svg>
-    
-      <div class="explain">
-        <div><strong>Data pipeline</strong><span>PostgreSQL changes are captured by DMS, stored in Bronze, cleaned by Glue, modeled by dbt, and exposed as Gold marts.</span></div>
-        <div><strong>Serving layer</strong><span>The analytics agent queries Gold data through Athena and returns governed answers with SQL, cost, and audit evidence.</span></div>
-        <div><strong>Frontends</strong><span>Streamlit, custom HTML, and Slack/MCP are separate user entry points that share the same backend contract.</span></div>
+    <section class="diagram-card" id="platform">
+      <div class="diagram-head">
+        <div class="eyebrow">Full platform context</div>
+        <h2>Orchestration turns independent repos into one repeatable data product.</h2>
+      </div>
+      <div class="svg-frame">
+        <svg viewBox="0 0 1320 560" role="img" aria-label="Enterprise Data Platform architecture with MWAA orchestration highlighted">
+          <defs>
+            <marker id="arrow-slate" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#344054"/></marker>
+            <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+            <marker id="arrow-teal" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0f766e"/></marker>
+            <marker id="arrow-olive" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#556b2f"/></marker>
+          </defs>
+          <rect width="1320" height="560" rx="30" fill="#fbfdff"/>
+          <text x="44" y="50" class="title" style="font-size:24px">Runtime control across the platform</text>
+          <text x="44" y="78" class="sub" style="font-size:14px">MWAA does not transform data itself. It starts, waits, validates, and orders the work performed by Glue, Crawler, dbt, Athena, and S3.</text>
+
+          <rect class="node node-dark" x="555" y="100" width="210" height="105" rx="24"/>
+          <text x="660" y="140" text-anchor="middle" class="title white-text">Airflow DAG</text>
+          <text x="660" y="164" text-anchor="middle" class="sub white-text">edp_pipeline</text>
+          <text x="660" y="184" text-anchor="middle" class="sub white-text">schedule + dependencies</text>
+
+          <g><rect class="node node-amber" x="70" y="115" width="150" height="78" rx="18"/><text x="145" y="146" text-anchor="middle" class="title">Bronze S3</text><text x="145" y="168" text-anchor="middle" class="sub">DMS output</text></g>
+          <g><rect class="node node-blue" x="305" y="115" width="150" height="78" rx="18"/><text x="380" y="146" text-anchor="middle" class="title">Glue jobs</text><text x="380" y="168" text-anchor="middle" class="sub">Bronze to Silver</text></g>
+          <g><rect class="node node-teal" x="865" y="115" width="150" height="78" rx="18"/><text x="940" y="146" text-anchor="middle" class="title">Silver S3</text><text x="940" y="168" text-anchor="middle" class="sub">clean tables</text></g>
+          <g><rect class="node node-olive" x="1100" y="115" width="150" height="78" rx="18"/><text x="1175" y="146" text-anchor="middle" class="title">Gold S3</text><text x="1175" y="168" text-anchor="middle" class="sub">business marts</text></g>
+
+          <rect class="node" x="250" y="300" width="170" height="78" rx="18"/><text x="335" y="331" text-anchor="middle" class="title">CloudWatch</text><text x="335" y="353" text-anchor="middle" class="sub">SilverRowCount</text>
+          <rect class="node" x="520" y="300" width="170" height="78" rx="18"/><text x="605" y="331" text-anchor="middle" class="title">Glue Crawler</text><text x="605" y="353" text-anchor="middle" class="sub">Catalog partitions</text>
+          <rect class="node node-olive" x="790" y="300" width="170" height="78" rx="18"/><text x="875" y="331" text-anchor="middle" class="title">dbt / Athena</text><text x="875" y="353" text-anchor="middle" class="sub">Gold models</text>
+          <rect class="node node-blue" x="1060" y="300" width="170" height="78" rx="18"/><text x="1145" y="331" text-anchor="middle" class="title">dbt artifacts</text><text x="1145" y="353" text-anchor="middle" class="sub">agent context</text>
+
+          <rect class="node" x="465" y="450" width="130" height="62" rx="16"/><text x="530" y="476" text-anchor="middle" class="small-title">Streamlit</text><text x="530" y="495" text-anchor="middle" class="tiny">frontend</text>
+          <rect class="node" x="630" y="450" width="130" height="62" rx="16"/><text x="695" y="476" text-anchor="middle" class="small-title">HTML UI</text><text x="695" y="495" text-anchor="middle" class="tiny">frontend</text>
+          <rect class="node" x="795" y="450" width="130" height="62" rx="16"/><text x="860" y="476" text-anchor="middle" class="small-title">Slack MCP</text><text x="860" y="495" text-anchor="middle" class="tiny">frontend</text>
+          <rect class="node node-blue" x="630" y="390" width="130" height="42" rx="14"/><text x="695" y="416" text-anchor="middle" class="small-title">FastAPI Agent</text>
+
+          <g class="flow"><path class="hit" d="M220 154 H305"/><path class="line" d="M220 154 H305"/></g>
+          <g class="flow blue"><path class="hit" d="M455 154 H555"/><path class="line" d="M455 154 H555"/><text x="505" y="142" text-anchor="middle">start jobs</text></g>
+          <g class="flow teal"><path class="hit" d="M765 154 H865"/><path class="line" d="M765 154 H865"/><text x="815" y="142" text-anchor="middle">wait</text></g>
+          <g class="flow olive"><path class="hit" d="M1015 154 H1100"/><path class="line" d="M1015 154 H1100"/></g>
+          <g class="flow return"><path class="hit" d="M380 193 C365 230 345 270 335 300"/><path class="line" d="M380 193 C365 230 345 270 335 300"/></g>
+          <g class="flow blue"><path class="hit" d="M555 190 C510 230 462 285 420 330"/><path class="line" d="M555 190 C510 230 462 285 420 330"/><text x="482" y="250">validate</text></g>
+          <g class="flow"><path class="hit" d="M940 193 C850 242 750 295 690 330"/><path class="line" d="M940 193 C850 242 750 295 690 330"/></g>
+          <g class="flow"><path class="hit" d="M690 340 H790"/><path class="line" d="M690 340 H790"/></g>
+          <g class="flow olive"><path class="hit" d="M960 340 H1060"/><path class="line" d="M960 340 H1060"/></g>
+          <g class="flow"><path class="hit" d="M1175 193 C1110 250 1010 303 960 340"/><path class="line" d="M1175 193 C1110 250 1010 303 960 340"/></g>
+          <g class="flow"><path class="hit" d="M1145 378 C1040 415 902 425 760 410"/><path class="line" d="M1145 378 C1040 415 902 425 760 410"/></g>
+          <g class="flow"><path class="hit" d="M630 416 C590 428 555 440 530 450"/><path class="line" d="M630 416 C590 428 555 440 530 450"/></g>
+          <g class="flow"><path class="hit" d="M695 432 V450"/><path class="line" d="M695 432 V450"/></g>
+          <g class="flow"><path class="hit" d="M760 416 C800 428 835 440 860 450"/><path class="line" d="M760 416 C800 428 835 440 860 450"/></g>
+        </svg>
+      </div>
+      <div class="diagram-note">
+        <div class="note"><strong>Control plane</strong><span>The DAG controls when each service starts and what must pass before the next layer runs.</span></div>
+        <div class="note"><strong>Quality-aware sequencing</strong><span>Validation gates sit between expensive stages, so the pipeline stops early when the evidence is wrong.</span></div>
+        <div class="note"><strong>Frontend readiness</strong><span>Once Gold and artifacts are refreshed, all three analytics entry points use the same governed backend.</span></div>
       </div>
     </section>
 
-    <section class="diagram-card" id="repo-flow">
-      <header>
-        <div class="eyebrow">Repository focus</div>
-        <h2>MWAA orchestration path</h2>
-      </header>
-      
-      <svg viewBox="0 0 1230 250" role="img" aria-label="MWAA orchestration path repository flow">
-        <defs>
-          <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
-          <marker id="arrow-accent" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
-        </defs>
-        <rect x="0" y="0" width="1230" height="250" rx="28" fill="#ffffff"/>
-        <text x="40" y="46" class="diagram-heading">MWAA orchestration path</text>
-        <text x="40" y="72" class="diagram-subtitle">The main responsibility of this repository as a left-to-right flow.</text>
-        <g><rect class="flow-node" x="42.0" y="118" width="172.7" height="76" rx="18"/><text x="128.3" y="152" text-anchor="middle" class="node-title">Schedule / trigger</text><text x="128.3" y="172" text-anchor="middle" class="node-sub">Step 1</text></g><g class="flow-arrow"><path class="hit" d="M218.7 156 H232.7"/><path class="line" d="M218.7 156 H232.7"/></g><g><rect class="flow-node" x="236.7" y="118" width="172.7" height="76" rx="18"/><text x="323.0" y="152" text-anchor="middle" class="node-title">DMS ready check</text><text x="323.0" y="172" text-anchor="middle" class="node-sub">Step 2</text></g><g class="flow-arrow"><path class="hit" d="M413.3 156 H427.3"/><path class="line" d="M413.3 156 H427.3"/></g><g><rect class="flow-node" x="431.3" y="118" width="172.7" height="76" rx="18"/><text x="517.7" y="152" text-anchor="middle" class="node-title">6 Glue jobs</text><text x="517.7" y="172" text-anchor="middle" class="node-sub">Step 3</text></g><g class="flow-arrow"><path class="hit" d="M608.0 156 H622.0"/><path class="line" d="M608.0 156 H622.0"/></g><g><rect class="flow-node" x="626.0" y="118" width="172.7" height="76" rx="18"/><text x="712.3" y="152" text-anchor="middle" class="node-title">Silver crawler</text><text x="712.3" y="172" text-anchor="middle" class="node-sub">Step 4</text></g><g class="flow-arrow"><path class="hit" d="M802.7 156 H816.7"/><path class="line" d="M802.7 156 H816.7"/></g><g><rect class="flow-node" x="820.7" y="118" width="172.7" height="76" rx="18"/><text x="907.0" y="152" text-anchor="middle" class="node-title">dbt run + test</text><text x="907.0" y="172" text-anchor="middle" class="node-sub">Step 5</text></g><g class="flow-arrow"><path class="hit" d="M997.3 156 H1011.3"/><path class="line" d="M997.3 156 H1011.3"/></g><g><rect class="flow-node" x="1015.3" y="118" width="172.7" height="76" rx="18"/><text x="1101.7" y="152" text-anchor="middle" class="node-title">Upload artifacts</text><text x="1101.7" y="172" text-anchor="middle" class="node-sub">Step 6</text></g>
-      </svg>
-    
-      <div class="explain">
-        <div><strong>Primary responsibility</strong><span>This diagram isolates the work owned by this repository from the rest of the platform.</span></div>
-        <div><strong>Input and output</strong><span>The left side shows what the repo receives; the right side shows what it hands to the next layer.</span></div>
-        <div><strong>Operational boundary</strong><span>The README has exact commands; this page shows the mental model behind those commands.</span></div>
+    <section class="diagram-card" id="dag">
+      <div class="diagram-head">
+        <div class="eyebrow">DAG graph</div>
+        <h2>The Airflow graph fans out for Silver, then gates Gold sequentially.</h2>
+      </div>
+      <div class="svg-frame">
+        <svg viewBox="0 0 1320 660" role="img" aria-label="Airflow DAG dependency graph">
+          <defs>
+            <marker id="arrow-slate" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#344054"/></marker>
+            <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+            <marker id="arrow-teal" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0f766e"/></marker>
+            <marker id="arrow-olive" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#556b2f"/></marker>
+          </defs>
+          <rect width="1320" height="660" rx="30" fill="#fbfdff"/>
+          <text x="44" y="52" class="title" style="font-size:24px">edp_pipeline task dependencies</text>
+          <text x="44" y="80" class="sub" style="font-size:14px">All six Silver jobs must finish before validation, catalog refresh, dbt run, dbt test, and completion.</text>
+
+          <rect class="node node-dark" x="60" y="298" width="126" height="54" rx="16"/>
+          <text x="123" y="321" text-anchor="middle" class="small-title white-text">06:00 UTC</text>
+          <text x="123" y="340" text-anchor="middle" class="tiny white-text">scheduled run</text>
+
+          <rect x="250" y="118" width="260" height="414" rx="26" fill="#eaf2ff" stroke="#9cc2ff"/>
+          <text x="380" y="150" text-anchor="middle" class="title">Parallel Silver fan-out</text>
+          <rect class="node" x="292" y="188" width="176" height="38" rx="12"/><text x="380" y="212" text-anchor="middle" class="small-title">silver_dim_customer</text>
+          <rect class="node" x="292" y="244" width="176" height="38" rx="12"/><text x="380" y="268" text-anchor="middle" class="small-title">silver_dim_product</text>
+          <rect class="node" x="292" y="300" width="176" height="38" rx="12"/><text x="380" y="324" text-anchor="middle" class="small-title">silver_fact_orders</text>
+          <rect class="node" x="292" y="356" width="176" height="38" rx="12"/><text x="380" y="380" text-anchor="middle" class="small-title">silver_fact_order_items</text>
+          <rect class="node" x="292" y="412" width="176" height="38" rx="12"/><text x="380" y="436" text-anchor="middle" class="small-title">silver_fact_payments</text>
+          <rect class="node" x="292" y="468" width="176" height="38" rx="12"/><text x="380" y="492" text-anchor="middle" class="small-title">silver_fact_shipments</text>
+
+          <rect class="node node-teal" x="590" y="298" width="150" height="54" rx="16"/><text x="665" y="321" text-anchor="middle" class="small-title">silver_complete</text><text x="665" y="340" text-anchor="middle" class="tiny">join point</text>
+          <rect class="node node-amber" x="812" y="154" width="190" height="64" rx="18"/><text x="907" y="181" text-anchor="middle" class="small-title">O1 row count gate</text><text x="907" y="201" text-anchor="middle" class="tiny">CloudWatch metrics</text>
+          <rect class="node" x="812" y="250" width="190" height="64" rx="18"/><text x="907" y="277" text-anchor="middle" class="small-title">run_silver_crawler</text><text x="907" y="297" text-anchor="middle" class="tiny">Glue Catalog</text>
+          <rect class="node node-amber" x="812" y="346" width="190" height="64" rx="18"/><text x="907" y="373" text-anchor="middle" class="small-title">D2 freshness gate</text><text x="907" y="393" text-anchor="middle" class="tiny">dbt source tests</text>
+          <rect class="node node-olive" x="812" y="442" width="190" height="64" rx="18"/><text x="907" y="469" text-anchor="middle" class="small-title">gold_dbt_run</text><text x="907" y="489" text-anchor="middle" class="tiny">Athena builds marts</text>
+          <rect class="node node-amber" x="1080" y="250" width="190" height="64" rx="18"/><text x="1175" y="277" text-anchor="middle" class="small-title">D3 row count gate</text><text x="1175" y="297" text-anchor="middle" class="tiny">run_results.json</text>
+          <rect class="node node-olive" x="1080" y="346" width="190" height="64" rx="18"/><text x="1175" y="373" text-anchor="middle" class="small-title">gold_dbt_test</text><text x="1175" y="393" text-anchor="middle" class="tiny">model tests</text>
+          <rect class="node node-teal" x="1080" y="442" width="190" height="64" rx="18"/><text x="1175" y="469" text-anchor="middle" class="small-title">pipeline_complete</text><text x="1175" y="489" text-anchor="middle" class="tiny">success marker</text>
+
+          <g class="flow blue"><path class="hit" d="M186 325 C214 250 236 208 292 207"/><path class="line" d="M186 325 C214 250 236 208 292 207"/></g>
+          <g class="flow blue"><path class="hit" d="M186 325 C224 272 244 264 292 263"/><path class="line" d="M186 325 C224 272 244 264 292 263"/></g>
+          <g class="flow blue"><path class="hit" d="M186 325 H292"/><path class="line" d="M186 325 H292"/></g>
+          <g class="flow blue"><path class="hit" d="M186 325 C224 374 244 376 292 375"/><path class="line" d="M186 325 C224 374 244 376 292 375"/></g>
+          <g class="flow blue"><path class="hit" d="M186 325 C224 426 244 432 292 431"/><path class="line" d="M186 325 C224 426 244 432 292 431"/></g>
+          <g class="flow blue"><path class="hit" d="M186 325 C214 502 238 489 292 487"/><path class="line" d="M186 325 C214 502 238 489 292 487"/></g>
+
+          <g class="flow teal"><path class="hit" d="M468 207 C532 226 560 284 590 315"/><path class="line" d="M468 207 C532 226 560 284 590 315"/></g>
+          <g class="flow teal"><path class="hit" d="M468 263 C532 276 560 304 590 321"/><path class="line" d="M468 263 C532 276 560 304 590 321"/></g>
+          <g class="flow teal"><path class="hit" d="M468 319 H590"/><path class="line" d="M468 319 H590"/></g>
+          <g class="flow teal"><path class="hit" d="M468 375 C532 366 560 346 590 331"/><path class="line" d="M468 375 C532 366 560 346 590 331"/></g>
+          <g class="flow teal"><path class="hit" d="M468 431 C532 410 560 362 590 337"/><path class="line" d="M468 431 C532 410 560 362 590 337"/></g>
+          <g class="flow teal"><path class="hit" d="M468 487 C532 458 560 382 590 343"/><path class="line" d="M468 487 C532 458 560 382 590 343"/></g>
+
+          <g class="flow"><path class="hit" d="M740 325 C782 286 790 194 812 186"/><path class="line" d="M740 325 C782 286 790 194 812 186"/></g>
+          <g class="flow"><path class="hit" d="M907 218 V250"/><path class="line" d="M907 218 V250"/></g>
+          <g class="flow"><path class="hit" d="M907 314 V346"/><path class="line" d="M907 314 V346"/></g>
+          <g class="flow olive"><path class="hit" d="M907 410 V442"/><path class="line" d="M907 410 V442"/></g>
+          <g class="flow"><path class="hit" d="M1002 474 C1050 452 1072 314 1080 282"/><path class="line" d="M1002 474 C1050 452 1072 314 1080 282"/></g>
+          <g class="flow"><path class="hit" d="M1175 314 V346"/><path class="line" d="M1175 314 V346"/></g>
+          <g class="flow teal"><path class="hit" d="M1175 410 V442"/><path class="line" d="M1175 410 V442"/></g>
+        </svg>
+      </div>
+      <div class="diagram-note">
+        <div class="note"><strong>Fan-out</strong><span>The six Glue tasks run together because each reads and writes separate table prefixes.</span></div>
+        <div class="note"><strong>Fan-in</strong><span>The `silver_complete` join ensures no downstream work starts until every Silver table succeeded.</span></div>
+        <div class="note"><strong>Sequential Gold</strong><span>Catalog refresh, freshness, dbt run, row-count validation, and dbt tests happen in a fixed order.</span></div>
       </div>
     </section>
 
-    <section class="diagram-card">
-      <header>
-        <div class="eyebrow">Runtime sequence</div>
-        <h2>How work moves through the repo</h2>
-      </header>
-      
-      <svg viewBox="0 0 1230 560" role="img" aria-label="Runtime interaction sequence">
-        <defs>
-          <marker id="arrow-dark" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#334155"/></marker>
-          <marker id="arrow-accent" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
-        </defs>
-        <rect x="0" y="0" width="1230" height="560" rx="28" fill="#fbfdff"/>
-        <text x="40" y="38" class="diagram-heading">Runtime interaction</text>
-        <line class="swimlane" x1="82.0" y1="96" x2="82.0" y2="500"/><rect class="actor-box" x="18.0" y="46" width="128" height="42" rx="12"/><text class="actor-label" x="82.0" y="72" text-anchor="middle">Airflow</text><line class="swimlane" x1="295.2" y1="96" x2="295.2" y2="500"/><rect class="actor-box" x="231.2" y="46" width="128" height="42" rx="12"/><text class="actor-label" x="295.2" y="72" text-anchor="middle">DMS</text><line class="swimlane" x1="508.4" y1="96" x2="508.4" y2="500"/><rect class="actor-box" x="444.4" y="46" width="128" height="42" rx="12"/><text class="actor-label" x="508.4" y="72" text-anchor="middle">Glue</text><line class="swimlane" x1="721.6" y1="96" x2="721.6" y2="500"/><rect class="actor-box" x="657.6" y="46" width="128" height="42" rx="12"/><text class="actor-label" x="721.6" y="72" text-anchor="middle">Crawler</text><line class="swimlane" x1="934.8" y1="96" x2="934.8" y2="500"/><rect class="actor-box" x="870.8" y="46" width="128" height="42" rx="12"/><text class="actor-label" x="934.8" y="72" text-anchor="middle">dbt</text><line class="swimlane" x1="1148.0" y1="96" x2="1148.0" y2="500"/><rect class="actor-box" x="1084.0" y="46" width="128" height="42" rx="12"/><text class="actor-label" x="1148.0" y="72" text-anchor="middle">S3 Metadata</text>
-        <g class="flow-arrow accent"><path class="hit" d="M82.0 138 H295.2"/><path class="line" d="M82.0 138 H295.2"/><text x="188.6" y="128" text-anchor="middle">1. Trigger</text></g><g class="flow-arrow accent"><path class="hit" d="M295.2 190 H508.4"/><path class="line" d="M295.2 190 H508.4"/><text x="401.8" y="180" text-anchor="middle">2. Route work</text></g><g class="flow-arrow accent"><path class="hit" d="M508.4 248 H721.6"/><path class="line" d="M508.4 248 H721.6"/><text x="615.0" y="238" text-anchor="middle">3. Process / generate</text></g><g class="flow-arrow accent"><path class="hit" d="M721.6 306 H934.8"/><path class="line" d="M721.6 306 H934.8"/><text x="828.2" y="296" text-anchor="middle">4. Read or write data</text></g><g class="flow-arrow return"><path class="hit" d="M934.8 364 H508.4"/><path class="line" d="M934.8 364 H508.4"/><text x="721.6" y="354" text-anchor="middle">5. Return evidence</text></g><g class="flow-arrow return"><path class="hit" d="M508.4 420 H295.2"/><path class="line" d="M508.4 420 H295.2"/><text x="401.8" y="410" text-anchor="middle">6. Package response</text></g><g class="flow-arrow return"><path class="hit" d="M295.2 470 H82.0"/><path class="line" d="M295.2 470 H82.0"/><text x="188.6" y="460" text-anchor="middle">7. Operational result</text></g>
-      </svg>
-    
-      <div class="explain">
-        <div><strong>Trigger</strong><span>A person, workflow, schedule, or frontend starts the sequence.</span></div>
-        <div><strong>Processing</strong><span>The repo performs its specialized job and returns evidence or artifacts.</span></div>
-        <div><strong>Handoff</strong><span>The output feeds another repository, platform layer, or stakeholder interface.</span></div>
+    <section class="diagram-card" id="gates">
+      <div class="diagram-head">
+        <div class="eyebrow">Validation gates</div>
+        <h2>The DAG stops before producing misleading Gold data.</h2>
+      </div>
+      <div class="svg-frame">
+        <svg viewBox="0 0 1320 570" role="img" aria-label="Validation gates in MWAA pipeline">
+          <defs>
+            <marker id="arrow-slate" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#344054"/></marker>
+            <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+            <marker id="arrow-teal" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0f766e"/></marker>
+            <marker id="arrow-olive" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#556b2f"/></marker>
+          </defs>
+          <rect width="1320" height="570" rx="30" fill="#fbfdff"/>
+          <text x="44" y="52" class="title" style="font-size:24px">Validation as first-class orchestration</text>
+          <text x="44" y="80" class="sub" style="font-size:14px">The DAG uses metrics and dbt artifacts as evidence so failures are caught without unnecessary S3 or Athena scans.</text>
+
+          <rect class="node node-blue" x="70" y="226" width="160" height="78" rx="20"/><text x="150" y="257" text-anchor="middle" class="title">Silver jobs</text><text x="150" y="280" text-anchor="middle" class="sub">publish metrics</text>
+          <rect class="node node-amber" x="310" y="126" width="210" height="90" rx="22"/><text x="415" y="160" text-anchor="middle" class="title">O1</text><text x="415" y="183" text-anchor="middle" class="sub">SilverRowCount > 0</text>
+          <rect class="node" x="310" y="314" width="210" height="90" rx="22"/><text x="415" y="348" text-anchor="middle" class="title">Crawler</text><text x="415" y="371" text-anchor="middle" class="sub">Catalog sees Silver</text>
+          <rect class="node node-amber" x="610" y="126" width="210" height="90" rx="22"/><text x="715" y="160" text-anchor="middle" class="title">D2</text><text x="715" y="183" text-anchor="middle" class="sub">source freshness</text>
+          <rect class="node node-olive" x="610" y="314" width="210" height="90" rx="22"/><text x="715" y="348" text-anchor="middle" class="title">dbt run</text><text x="715" y="371" text-anchor="middle" class="sub">writes Gold</text>
+          <rect class="node node-amber" x="910" y="126" width="210" height="90" rx="22"/><text x="1015" y="160" text-anchor="middle" class="title">D3</text><text x="1015" y="183" text-anchor="middle" class="sub">Gold vs Silver counts</text>
+          <rect class="node node-olive" x="910" y="314" width="210" height="90" rx="22"/><text x="1015" y="348" text-anchor="middle" class="title">dbt test</text><text x="1015" y="371" text-anchor="middle" class="sub">schema quality</text>
+          <rect class="node node-teal" x="1170" y="226" width="120" height="78" rx="20"/><text x="1230" y="257" text-anchor="middle" class="title">Complete</text><text x="1230" y="280" text-anchor="middle" class="sub">safe output</text>
+          <rect class="node node-rose" x="328" y="470" width="664" height="56" rx="18"/><text x="660" y="493" text-anchor="middle" class="title">Stop path: preserve last successful Gold state</text><text x="660" y="512" text-anchor="middle" class="sub">A failed gate prevents downstream tasks from publishing new context or signaling success.</text>
+
+          <g class="flow blue"><path class="hit" d="M230 265 C260 230 284 178 310 171"/><path class="line" d="M230 265 C260 230 284 178 310 171"/></g>
+          <g class="flow"><path class="hit" d="M415 216 V314"/><path class="line" d="M415 216 V314"/></g>
+          <g class="flow"><path class="hit" d="M520 359 C568 330 590 205 610 171"/><path class="line" d="M520 359 C568 330 590 205 610 171"/></g>
+          <g class="flow olive"><path class="hit" d="M715 216 V314"/><path class="line" d="M715 216 V314"/></g>
+          <g class="flow"><path class="hit" d="M820 359 C868 330 890 205 910 171"/><path class="line" d="M820 359 C868 330 890 205 910 171"/></g>
+          <g class="flow olive"><path class="hit" d="M1015 216 V314"/><path class="line" d="M1015 216 V314"/></g>
+          <g class="flow teal"><path class="hit" d="M1120 359 C1160 330 1164 282 1170 265"/><path class="line" d="M1120 359 C1160 330 1164 282 1170 265"/></g>
+          <g class="flow return"><path class="hit" d="M415 216 C450 310 500 425 560 470"/><path class="line" d="M415 216 C450 310 500 425 560 470"/><text x="500" y="407">fail</text></g>
+          <g class="flow return"><path class="hit" d="M715 216 C724 326 706 420 680 470"/><path class="line" d="M715 216 C724 326 706 420 680 470"/><text x="733" y="407">fail</text></g>
+          <g class="flow return"><path class="hit" d="M1015 216 C970 320 920 430 830 470"/><path class="line" d="M1015 216 C970 320 920 430 830 470"/><text x="918" y="407">fail</text></g>
+        </svg>
+      </div>
+      <div class="diagram-note">
+        <div class="note"><strong>O1 protects Silver</strong><span>CloudWatch row-count metrics catch zero-row or missing-output failures before the Crawler and dbt spend time.</span></div>
+        <div class="note"><strong>D2 protects freshness</strong><span>dbt source tests verify that Silver reached the expected reference cutoff before Gold models run.</span></div>
+        <div class="note"><strong>D3 protects joins</strong><span>Staging counts from `run_results.json` are compared against Silver counts with a 5% tolerance.</span></div>
       </div>
     </section>
 
-    <section id="concepts">
-      <div class="eyebrow">Beginner-friendly concept map</div>
-      <h2>Key ideas to understand</h2>
-      <div class="concept-grid">
-          <article class="concept-card">
-            <h3>Fan-out / fan-in</h3>
-            <div class="mini-flow"><span class="mini-node">6 Glue jobs</span><span class="mini-arrow">→</span><span class="mini-node">parallel</span><span class="mini-arrow">→</span><span class="mini-node">join</span></div>
-            <p>Independent Silver transformations run in parallel, then converge before Gold.</p>
-          </article>
-        
-          <article class="concept-card">
-            <h3>Metadata refresh</h3>
-            <div class="mini-flow"><span class="mini-node">Crawler</span><span class="mini-arrow">→</span><span class="mini-node">Glue Catalog</span><span class="mini-arrow">→</span><span class="mini-node">Athena</span></div>
-            <p>Athena needs up-to-date table metadata before dbt builds Gold.</p>
-          </article>
-        
-          <article class="concept-card">
-            <h3>Artifact handoff</h3>
-            <div class="mini-flow"><span class="mini-node">dbt manifest</span><span class="mini-arrow">→</span><span class="mini-node">dbt catalog</span><span class="mini-arrow">→</span><span class="mini-node">agent schema</span></div>
-            <p>The DAG publishes schema knowledge for the analytics agent.</p>
-          </article>
+    <section class="diagram-card" id="deploy">
+      <div class="diagram-head">
+        <div class="eyebrow">Deployment ownership</div>
+        <h2>DAG changes deploy in seconds; package changes stay in Terraform.</h2>
+      </div>
+      <div class="svg-frame">
+        <svg viewBox="0 0 1320 600" role="img" aria-label="MWAA deployment ownership diagram">
+          <defs>
+            <marker id="arrow-slate" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#344054"/></marker>
+            <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+            <marker id="arrow-teal" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0f766e"/></marker>
+            <marker id="arrow-olive" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#556b2f"/></marker>
+          </defs>
+          <rect width="1320" height="600" rx="30" fill="#fbfdff"/>
+          <text x="44" y="52" class="title" style="font-size:24px">What updates MWAA, and what does not</text>
+          <text x="44" y="80" class="sub" style="font-size:14px">This repo syncs DAG code only. Terraform owns runtime packages and the MWAA environment lifecycle.</text>
+
+          <rect x="68" y="132" width="330" height="340" rx="26" fill="#eaf2ff" stroke="#9cc2ff"/>
+          <text x="233" y="166" text-anchor="middle" class="title">This repo</text>
+          <rect class="node" x="110" y="220" width="246" height="66" rx="18"/><text x="233" y="247" text-anchor="middle" class="small-title">dags/edp_pipeline.py</text><text x="233" y="267" text-anchor="middle" class="sub">S3 sync to MWAA bucket</text>
+          <rect class="node node-teal" x="110" y="330" width="246" height="66" rx="18"/><text x="233" y="357" text-anchor="middle" class="small-title">MWAA sees new DAG</text><text x="233" y="377" text-anchor="middle" class="sub">roughly 30 seconds</text>
+
+          <rect x="496" y="132" width="330" height="340" rx="26" fill="#fff6df" stroke="#f4c77a"/>
+          <text x="661" y="166" text-anchor="middle" class="title">Terraform infra repo</text>
+          <rect class="node" x="538" y="220" width="246" height="66" rx="18"/><text x="661" y="247" text-anchor="middle" class="small-title">requirements.txt</text><text x="661" y="267" text-anchor="middle" class="sub">runtime packages</text>
+          <rect class="node node-amber" x="538" y="330" width="246" height="66" rx="18"/><text x="661" y="357" text-anchor="middle" class="small-title">MWAA update</text><text x="661" y="377" text-anchor="middle" class="sub">about 35 minutes</text>
+
+          <rect x="924" y="132" width="330" height="340" rx="26" fill="#f1f5e9" stroke="#bdcda0"/>
+          <text x="1089" y="166" text-anchor="middle" class="title">dbt repo</text>
+          <rect class="node" x="966" y="220" width="246" height="66" rx="18"/><text x="1089" y="247" text-anchor="middle" class="small-title">models/ + macros/</text><text x="1089" y="267" text-anchor="middle" class="sub">S3 sync to dbt path</text>
+          <rect class="node node-olive" x="966" y="330" width="246" height="66" rx="18"/><text x="1089" y="357" text-anchor="middle" class="small-title">Airflow downloads</text><text x="1089" y="377" text-anchor="middle" class="sub">at task runtime</text>
+
+          <rect class="node node-dark" x="540" y="505" width="240" height="58" rx="18"/>
+          <text x="660" y="529" text-anchor="middle" class="title white-text">MWAA environment</text>
+          <text x="660" y="548" text-anchor="middle" class="sub white-text">DAG code + packages + dbt project</text>
+          <g class="flow blue"><path class="hit" d="M233 396 C328 460 442 500 540 534"/><path class="line" d="M233 396 C328 460 442 500 540 534"/></g>
+          <g class="flow"><path class="hit" d="M661 396 V505"/><path class="line" d="M661 396 V505"/></g>
+          <g class="flow olive"><path class="hit" d="M1089 396 C990 460 876 500 780 534"/><path class="line" d="M1089 396 C990 460 876 500 780 534"/></g>
+        </svg>
+      </div>
+      <div class="diagram-note">
+        <div class="note"><strong>DAG-only deploy</strong><span>This repo’s workflow uploads DAG files to S3 and does not call `aws mwaa update-environment`.</span></div>
+        <div class="note"><strong>Package changes are infra</strong><span>Python dependency changes are deliberate Terraform changes because they mutate the MWAA runtime environment.</span></div>
+        <div class="note"><strong>dbt stays decoupled</strong><span>dbt project changes sync separately and are downloaded by the DAG when the Gold tasks run.</span></div>
+      </div>
+    </section>
+
+    <section class="diagram-card" id="orchestrators">
+      <div class="diagram-head">
+        <div class="eyebrow">Orchestration options</div>
+        <h2>MWAA and Step Functions run the same logical pipeline for different operating modes.</h2>
+      </div>
+      <div class="svg-frame">
+        <svg viewBox="0 0 1320 560" role="img" aria-label="MWAA and Step Functions orchestration comparison">
+          <defs>
+            <marker id="arrow-slate" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#344054"/></marker>
+            <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
+            <marker id="arrow-teal" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#0f766e"/></marker>
+            <marker id="arrow-olive" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#556b2f"/></marker>
+          </defs>
+          <rect width="1320" height="560" rx="30" fill="#fbfdff"/>
+          <text x="44" y="52" class="title" style="font-size:24px">Two orchestrators, same data contract</text>
+          <text x="44" y="80" class="sub" style="font-size:14px">Both paths produce the same Silver, Gold, and artifacts. The choice is operational: fast dev sessions or Airflow UI validation.</text>
+
+          <rect x="70" y="130" width="550" height="325" rx="28" fill="#eaf2ff" stroke="#9cc2ff"/>
+          <text x="345" y="166" text-anchor="middle" class="title">Step Functions path</text>
+          <text x="345" y="190" text-anchor="middle" class="sub">Default for fast daily development sessions</text>
+          <rect class="node" x="110" y="245" width="120" height="54" rx="16"/><text x="170" y="277" text-anchor="middle" class="small-title">Start now</text>
+          <rect class="node" x="260" y="245" width="120" height="54" rx="16"/><text x="320" y="277" text-anchor="middle" class="small-title">Glue SDK</text>
+          <rect class="node" x="410" y="245" width="120" height="54" rx="16"/><text x="470" y="277" text-anchor="middle" class="small-title">ECS dbt</text>
+          <rect class="node node-teal" x="260" y="350" width="190" height="54" rx="16"/><text x="355" y="382" text-anchor="middle" class="small-title">~10-12 min run</text>
+          <g class="flow blue"><path class="hit" d="M230 272 H260"/><path class="line" d="M230 272 H260"/></g>
+          <g class="flow blue"><path class="hit" d="M380 272 H410"/><path class="line" d="M380 272 H410"/></g>
+          <g class="flow teal"><path class="hit" d="M470 299 C450 330 402 348 355 350"/><path class="line" d="M470 299 C450 330 402 348 355 350"/></g>
+
+          <rect x="700" y="130" width="550" height="325" rx="28" fill="#f1f5e9" stroke="#bdcda0"/>
+          <text x="975" y="166" text-anchor="middle" class="title">MWAA Airflow path</text>
+          <text x="975" y="190" text-anchor="middle" class="sub">Useful for visual dependency graph and Airflow validation</text>
+          <rect class="node" x="740" y="245" width="120" height="54" rx="16"/><text x="800" y="277" text-anchor="middle" class="small-title">MWAA ready</text>
+          <rect class="node" x="890" y="245" width="120" height="54" rx="16"/><text x="950" y="277" text-anchor="middle" class="small-title">Airflow DAG</text>
+          <rect class="node" x="1040" y="245" width="120" height="54" rx="16"/><text x="1100" y="277" text-anchor="middle" class="small-title">Same tasks</text>
+          <rect class="node node-amber" x="890" y="350" width="190" height="54" rx="16"/><text x="985" y="382" text-anchor="middle" class="small-title">startup wait applies</text>
+          <g class="flow olive"><path class="hit" d="M860 272 H890"/><path class="line" d="M860 272 H890"/></g>
+          <g class="flow olive"><path class="hit" d="M1010 272 H1040"/><path class="line" d="M1010 272 H1040"/></g>
+          <g class="flow"><path class="hit" d="M950 299 C954 324 970 344 985 350"/><path class="line" d="M950 299 C954 324 970 344 985 350"/></g>
+
+          <rect class="node node-dark" x="495" y="490" width="330" height="44" rx="16"/>
+          <text x="660" y="518" text-anchor="middle" class="title white-text">Same output: Silver, Gold, artifacts, analytics frontends</text>
+          <g class="flow teal"><path class="hit" d="M355 404 C424 452 482 480 540 490"/><path class="line" d="M355 404 C424 452 482 480 540 490"/></g>
+          <g class="flow olive"><path class="hit" d="M985 404 C896 462 852 484 780 490"/><path class="line" d="M985 404 C896 462 852 484 780 490"/></g>
+        </svg>
+      </div>
+      <div class="diagram-note">
+        <div class="note"><strong>Step Functions</strong><span>Starts immediately and is the faster path for normal dev sessions where you want the platform up briefly.</span></div>
+        <div class="note"><strong>MWAA</strong><span>Gives the Airflow graph and managed scheduler experience, but its environment lifecycle is heavier.</span></div>
+        <div class="note"><strong>Same contract</strong><span>Both orchestrators enforce the same pipeline shape and feed the same analytics surfaces.</span></div>
+      </div>
+    </section>
+
+    <section id="concepts" class="grid" aria-label="Repository concepts">
+      <article class="concept">
+        <h3>Repository mental model</h3>
+        <div class="mini-flow">
+          <span class="mini-node">Schedule</span>
+          <span class="mini-arrow">→</span>
+          <span class="mini-node">Parallel Silver</span>
+          <span class="mini-arrow">→</span>
+          <span class="mini-node">Gates</span>
+          <span class="mini-arrow">→</span>
+          <span class="mini-node">Gold</span>
         </div>
-    </section>
-
-    <section>
-      <div class="eyebrow">README navigation</div>
-      <h2>Detailed sections in the markdown README</h2>
-      <div class="sections">
-          <article class="section-tile">
-            <span>01</span>
-            <strong>Repository layout</strong>
-          </article>
-        
-          <article class="section-tile">
-            <span>02</span>
-            <strong>Local development</strong>
-          </article>
-        
-          <article class="section-tile">
-            <span>03</span>
-            <strong>DAG overview</strong>
-          </article>
-        
-          <article class="section-tile">
-            <span>04</span>
-            <strong>MWAA environment and DAG</strong>
-          </article>
-        
-          <article class="section-tile">
-            <span>05</span>
-            <strong>How to deploy to MWAA</strong>
-          </article>
-        
-          <article class="section-tile">
-            <span>06</span>
-            <strong>Updating Python packages</strong>
-          </article>
+        <p>The repo is an ordering and evidence layer, not a transformation library.</p>
+      </article>
+      <article class="concept">
+        <h3>Why max_active_runs is one</h3>
+        <div class="mini-flow">
+          <span class="mini-node">No overlap</span>
+          <span class="mini-arrow">→</span>
+          <span class="mini-node">No duplicate writes</span>
         </div>
+        <p>Only one DAG run can write Silver and Gold at a time, which protects the data lake from overlapping runs.</p>
+      </article>
+      <article class="concept">
+        <h3>Where to read exact commands</h3>
+        <div class="repo-links">
+          <a class="button primary" href="https://enterprise-data-platform-emeka.github.io/platform-orchestration-mwaa-airflow/html/?v=latest">HTML version</a>
+          <a class="button" href="https://github.com/enterprise-data-platform-emeka/platform-orchestration-mwaa-airflow/blob/main/README.md">Markdown README</a>
+        </div>
+      </article>
     </section>
 
-    <p class="footer">Use this page to understand the architecture visually; use the rendered README for exact setup and troubleshooting details.</p>
+    <p class="footer">Visual README for platform-orchestration-mwaa-airflow. The markdown README remains the exact command and operations reference.</p>
   </main>
 </body>
 </html>
