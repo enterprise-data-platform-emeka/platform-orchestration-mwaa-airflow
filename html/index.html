@@ -304,10 +304,10 @@
     <section class="diagram-card" id="platform">
       <div class="diagram-head">
         <div class="eyebrow">Full platform context</div>
-        <h2>Orchestration turns independent repos into one repeatable data product.</h2>
+        <h2>MWAA coordinates the Silver-to-Gold pipeline without owning the data transformations.</h2>
       </div>
       <div class="svg-frame">
-        <svg viewBox="0 0 1320 560" role="img" aria-label="Enterprise Data Platform architecture with MWAA orchestration highlighted">
+        <svg viewBox="0 0 1320 560" role="img" aria-label="MWAA orchestration control plane for the Silver and Gold pipeline">
           <defs>
             <marker id="arrow-slate" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#344054"/></marker>
             <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#2563eb"/></marker>
@@ -315,49 +315,66 @@
             <marker id="arrow-olive" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#556b2f"/></marker>
           </defs>
           <rect width="1320" height="560" rx="30" fill="#fbfdff"/>
-          <text x="44" y="50" class="title" style="font-size:24px">Runtime control across the platform</text>
-          <text x="44" y="78" class="sub" style="font-size:14px">MWAA does not transform data itself. It starts, waits, validates, and orders the work performed by Glue, Crawler, dbt, Athena, and S3.</text>
+          <text x="44" y="50" class="title" style="font-size:24px">MWAA as the pipeline control plane</text>
+          <text x="44" y="78" class="sub" style="font-size:14px">The DAG coordinates service calls. Data moves through S3, Glue, the Catalog, dbt, and Athena; MWAA controls the order and validation points.</text>
 
-          <rect class="node node-dark" x="555" y="100" width="210" height="105" rx="24"/>
-          <text x="660" y="140" text-anchor="middle" class="title white-text">Airflow DAG</text>
-          <text x="660" y="164" text-anchor="middle" class="sub white-text">edp_pipeline</text>
-          <text x="660" y="184" text-anchor="middle" class="sub white-text">schedule + dependencies</text>
+          <rect x="52" y="122" width="260" height="320" rx="24" fill="#fffaf0" stroke="#f4c77a"/>
+          <text x="82" y="158" class="pill-text">1. INPUT LAYER</text>
+          <rect class="node node-amber" x="96" y="225" width="172" height="82" rx="18"/>
+          <text x="182" y="256" text-anchor="middle" class="title">Bronze S3</text>
+          <text x="182" y="279" text-anchor="middle" class="sub">raw DMS output</text>
 
-          <g><rect class="node node-amber" x="70" y="115" width="150" height="78" rx="18"/><text x="145" y="146" text-anchor="middle" class="title">Bronze S3</text><text x="145" y="168" text-anchor="middle" class="sub">DMS output</text></g>
-          <g><rect class="node node-blue" x="305" y="115" width="150" height="78" rx="18"/><text x="380" y="146" text-anchor="middle" class="title">Glue jobs</text><text x="380" y="168" text-anchor="middle" class="sub">Bronze to Silver</text></g>
-          <g><rect class="node node-teal" x="865" y="115" width="150" height="78" rx="18"/><text x="940" y="146" text-anchor="middle" class="title">Silver S3</text><text x="940" y="168" text-anchor="middle" class="sub">clean tables</text></g>
-          <g><rect class="node node-olive" x="1100" y="115" width="150" height="78" rx="18"/><text x="1175" y="146" text-anchor="middle" class="title">Gold S3</text><text x="1175" y="168" text-anchor="middle" class="sub">business marts</text></g>
+          <rect x="370" y="122" width="260" height="320" rx="24" fill="#f4f8ff" stroke="#9cc2ff"/>
+          <text x="400" y="158" class="pill-text">2. SILVER BUILD</text>
+          <rect class="node node-blue" x="414" y="205" width="172" height="82" rx="18"/>
+          <text x="500" y="236" text-anchor="middle" class="title">6 Glue jobs</text>
+          <text x="500" y="259" text-anchor="middle" class="sub">parallel transforms</text>
+          <rect class="node" x="414" y="326" width="172" height="70" rx="18"/>
+          <text x="500" y="354" text-anchor="middle" class="title">CloudWatch</text>
+          <text x="500" y="376" text-anchor="middle" class="sub">row-count evidence</text>
 
-          <rect class="node" x="250" y="300" width="170" height="78" rx="18"/><text x="335" y="331" text-anchor="middle" class="title">CloudWatch</text><text x="335" y="353" text-anchor="middle" class="sub">SilverRowCount</text>
-          <rect class="node" x="520" y="300" width="170" height="78" rx="18"/><text x="605" y="331" text-anchor="middle" class="title">Glue Crawler</text><text x="605" y="353" text-anchor="middle" class="sub">Catalog partitions</text>
-          <rect class="node node-olive" x="790" y="300" width="170" height="78" rx="18"/><text x="875" y="331" text-anchor="middle" class="title">dbt / Athena</text><text x="875" y="353" text-anchor="middle" class="sub">Gold models</text>
-          <rect class="node node-blue" x="1060" y="300" width="170" height="78" rx="18"/><text x="1145" y="331" text-anchor="middle" class="title">dbt artifacts</text><text x="1145" y="353" text-anchor="middle" class="sub">agent context</text>
+          <rect x="688" y="122" width="260" height="320" rx="24" fill="#f1fbf8" stroke="#86d7cd"/>
+          <text x="718" y="158" class="pill-text">3. CATALOG + GOLD</text>
+          <rect class="node node-teal" x="732" y="182" width="172" height="70" rx="18"/>
+          <text x="818" y="210" text-anchor="middle" class="title">Silver S3</text>
+          <text x="818" y="232" text-anchor="middle" class="sub">clean tables</text>
+          <rect class="node" x="732" y="278" width="172" height="70" rx="18"/>
+          <text x="818" y="306" text-anchor="middle" class="title">Glue Crawler</text>
+          <text x="818" y="328" text-anchor="middle" class="sub">Catalog refresh</text>
+          <rect class="node node-olive" x="732" y="374" width="172" height="70" rx="18"/>
+          <text x="818" y="402" text-anchor="middle" class="title">dbt + Athena</text>
+          <text x="818" y="424" text-anchor="middle" class="sub">business models</text>
 
-          <rect class="node" x="465" y="450" width="130" height="62" rx="16"/><text x="530" y="476" text-anchor="middle" class="small-title">Streamlit</text><text x="530" y="495" text-anchor="middle" class="tiny">frontend</text>
-          <rect class="node" x="630" y="450" width="130" height="62" rx="16"/><text x="695" y="476" text-anchor="middle" class="small-title">HTML UI</text><text x="695" y="495" text-anchor="middle" class="tiny">frontend</text>
-          <rect class="node" x="795" y="450" width="130" height="62" rx="16"/><text x="860" y="476" text-anchor="middle" class="small-title">Slack MCP</text><text x="860" y="495" text-anchor="middle" class="tiny">frontend</text>
-          <rect class="node node-blue" x="630" y="390" width="130" height="42" rx="14"/><text x="695" y="416" text-anchor="middle" class="small-title">FastAPI Agent</text>
+          <rect x="1006" y="122" width="260" height="320" rx="24" fill="#f8fbff" stroke="#d8e2ef"/>
+          <text x="1036" y="158" class="pill-text">4. READY OUTPUT</text>
+          <rect class="node node-olive" x="1050" y="210" width="172" height="74" rx="18"/>
+          <text x="1136" y="240" text-anchor="middle" class="title">Gold S3</text>
+          <text x="1136" y="262" text-anchor="middle" class="sub">analytics marts</text>
+          <rect class="node node-blue" x="1050" y="334" width="172" height="74" rx="18"/>
+          <text x="1136" y="362" text-anchor="middle" class="title">dbt artifacts</text>
+          <text x="1136" y="384" text-anchor="middle" class="sub">agent schema context</text>
 
-          <g class="flow"><path class="hit" d="M220 154 H305"/><path class="line" d="M220 154 H305"/></g>
-          <g class="flow blue"><path class="hit" d="M455 154 H555"/><path class="line" d="M455 154 H555"/><text x="505" y="142" text-anchor="middle">start jobs</text></g>
-          <g class="flow teal"><path class="hit" d="M765 154 H865"/><path class="line" d="M765 154 H865"/><text x="815" y="142" text-anchor="middle">wait</text></g>
-          <g class="flow olive"><path class="hit" d="M1015 154 H1100"/><path class="line" d="M1015 154 H1100"/></g>
-          <g class="flow return"><path class="hit" d="M380 193 C365 230 345 270 335 300"/><path class="line" d="M380 193 C365 230 345 270 335 300"/></g>
-          <g class="flow blue"><path class="hit" d="M555 190 C510 230 462 285 420 330"/><path class="line" d="M555 190 C510 230 462 285 420 330"/><text x="482" y="250">validate</text></g>
-          <g class="flow"><path class="hit" d="M940 193 C850 242 750 295 690 330"/><path class="line" d="M940 193 C850 242 750 295 690 330"/></g>
-          <g class="flow"><path class="hit" d="M690 340 H790"/><path class="line" d="M690 340 H790"/></g>
-          <g class="flow olive"><path class="hit" d="M960 340 H1060"/><path class="line" d="M960 340 H1060"/></g>
-          <g class="flow"><path class="hit" d="M1175 193 C1110 250 1010 303 960 340"/><path class="line" d="M1175 193 C1110 250 1010 303 960 340"/></g>
-          <g class="flow"><path class="hit" d="M1145 378 C1040 415 902 425 760 410"/><path class="line" d="M1145 378 C1040 415 902 425 760 410"/></g>
-          <g class="flow"><path class="hit" d="M630 416 C590 428 555 440 530 450"/><path class="line" d="M630 416 C590 428 555 440 530 450"/></g>
-          <g class="flow"><path class="hit" d="M695 432 V450"/><path class="line" d="M695 432 V450"/></g>
-          <g class="flow"><path class="hit" d="M760 416 C800 428 835 440 860 450"/><path class="line" d="M760 416 C800 428 835 440 860 450"/></g>
+          <rect class="node node-dark" x="476" y="42" width="370" height="72" rx="22"/>
+          <text x="661" y="72" text-anchor="middle" class="title white-text">Airflow DAG: edp_pipeline</text>
+          <text x="661" y="94" text-anchor="middle" class="sub white-text">schedule, dependencies, waits, validation gates, failure boundaries</text>
+
+          <g class="flow blue"><path class="hit" d="M661 114 C520 145 500 170 500 205"/><path class="line" d="M661 114 C520 145 500 170 500 205"/><text x="548" y="150" text-anchor="middle">start jobs</text></g>
+          <g class="flow blue"><path class="hit" d="M661 114 C520 210 500 270 500 326"/><path class="line" d="M661 114 C520 210 500 270 500 326"/><text x="543" y="290" text-anchor="middle">validate</text></g>
+          <g class="flow teal"><path class="hit" d="M661 114 C765 145 818 154 818 182"/><path class="line" d="M661 114 C765 145 818 154 818 182"/><text x="770" y="146" text-anchor="middle">wait</text></g>
+          <g class="flow olive"><path class="hit" d="M661 114 C812 200 818 316 818 374"/><path class="line" d="M661 114 C812 200 818 316 818 374"/><text x="783" y="354" text-anchor="middle">run dbt</text></g>
+
+          <g class="flow"><path class="hit" d="M268 266 H414"/><path class="line" d="M268 266 H414"/><text x="341" y="251" text-anchor="middle">read raw</text></g>
+          <g class="flow"><path class="hit" d="M586 246 H732"/><path class="line" d="M586 246 H732"/><text x="659" y="231" text-anchor="middle">write Silver</text></g>
+          <g class="flow"><path class="hit" d="M818 252 V278"/><path class="line" d="M818 252 V278"/></g>
+          <g class="flow"><path class="hit" d="M818 348 V374"/><path class="line" d="M818 348 V374"/></g>
+          <g class="flow olive"><path class="hit" d="M904 409 H1050"/><path class="line" d="M904 409 H1050"/><text x="977" y="394" text-anchor="middle">publish Gold</text></g>
+          <g class="flow blue"><path class="hit" d="M904 313 C985 313 1015 371 1050 371"/><path class="line" d="M904 313 C985 313 1015 371 1050 371"/><text x="979" y="330" text-anchor="middle">publish metadata</text></g>
         </svg>
       </div>
       <div class="diagram-note">
-        <div class="note"><strong>Control plane</strong><span>The DAG controls when each service starts and what must pass before the next layer runs.</span></div>
-        <div class="note"><strong>Quality-aware sequencing</strong><span>Validation gates sit between expensive stages, so the pipeline stops early when the evidence is wrong.</span></div>
-        <div class="note"><strong>Frontend readiness</strong><span>Once Gold and artifacts are refreshed, all three analytics entry points use the same governed backend.</span></div>
+        <div class="note"><strong>Control plane only</strong><span>MWAA is not the transformation engine. It calls managed services and decides when the next stage can run.</span></div>
+        <div class="note"><strong>Clear data path</strong><span>Raw data moves Bronze to Silver to Gold. The diagram keeps that path horizontal so the ownership is easy to follow.</span></div>
+        <div class="note"><strong>Agent readiness</strong><span>Gold tables and dbt artifacts become the downstream context used by Streamlit, HTML, and Slack through the analytics backend.</span></div>
       </div>
     </section>
 
