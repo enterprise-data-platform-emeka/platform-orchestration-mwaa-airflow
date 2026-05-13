@@ -316,59 +316,64 @@
           </defs>
           <rect width="1320" height="560" rx="30" fill="#fbfdff"/>
           <text x="44" y="50" class="title" style="font-size:24px">MWAA as the pipeline control plane</text>
-          <text x="44" y="78" class="sub" style="font-size:14px">The DAG coordinates service calls. Data moves through S3, Glue, the Catalog, dbt, and Athena; MWAA controls the order and validation points.</text>
+          <text x="44" y="78" class="sub" style="font-size:14px">Read this as three clean lanes: Airflow control signals, data movement, and the evidence/context produced for downstream consumers.</text>
 
-          <rect x="52" y="122" width="260" height="320" rx="24" fill="#fffaf0" stroke="#f4c77a"/>
-          <text x="82" y="158" class="pill-text">1. INPUT LAYER</text>
-          <rect class="node node-amber" x="96" y="225" width="172" height="82" rx="18"/>
-          <text x="182" y="256" text-anchor="middle" class="title">Bronze S3</text>
-          <text x="182" y="279" text-anchor="middle" class="sub">raw DMS output</text>
+          <rect x="70" y="118" width="1180" height="82" rx="24" fill="#eef4ff" stroke="#9cc2ff"/>
+          <text x="96" y="150" class="pill-text">CONTROL LANE</text>
+          <rect class="node node-dark" x="360" y="134" width="250" height="50" rx="16"/>
+          <text x="485" y="155" text-anchor="middle" class="small-title white-text">Airflow DAG: edp_pipeline</text>
+          <text x="485" y="173" text-anchor="middle" class="tiny white-text">schedule + dependencies</text>
+          <rect class="node node-blue" x="690" y="134" width="190" height="50" rx="16"/>
+          <text x="785" y="155" text-anchor="middle" class="small-title">Validation gates</text>
+          <text x="785" y="173" text-anchor="middle" class="tiny">row counts + freshness</text>
+          <rect class="node node-teal" x="960" y="134" width="180" height="50" rx="16"/>
+          <text x="1050" y="155" text-anchor="middle" class="small-title">Success marker</text>
+          <text x="1050" y="173" text-anchor="middle" class="tiny">safe to consume</text>
 
-          <rect x="370" y="122" width="260" height="320" rx="24" fill="#f4f8ff" stroke="#9cc2ff"/>
-          <text x="400" y="158" class="pill-text">2. SILVER BUILD</text>
-          <rect class="node node-blue" x="414" y="205" width="172" height="82" rx="18"/>
-          <text x="500" y="236" text-anchor="middle" class="title">6 Glue jobs</text>
-          <text x="500" y="259" text-anchor="middle" class="sub">parallel transforms</text>
-          <rect class="node" x="414" y="326" width="172" height="70" rx="18"/>
-          <text x="500" y="354" text-anchor="middle" class="title">CloudWatch</text>
-          <text x="500" y="376" text-anchor="middle" class="sub">row-count evidence</text>
+          <rect x="70" y="238" width="1180" height="152" rx="24" fill="#fbfdff" stroke="#d8e2ef"/>
+          <text x="96" y="270" class="pill-text">DATA LANE</text>
+          <rect class="node node-amber" x="120" y="292" width="156" height="66" rx="18"/>
+          <text x="198" y="319" text-anchor="middle" class="title">Bronze S3</text>
+          <text x="198" y="340" text-anchor="middle" class="sub">raw DMS output</text>
+          <rect class="node node-blue" x="370" y="292" width="156" height="66" rx="18"/>
+          <text x="448" y="319" text-anchor="middle" class="title">6 Glue jobs</text>
+          <text x="448" y="340" text-anchor="middle" class="sub">parallel Silver</text>
+          <rect class="node node-teal" x="620" y="292" width="156" height="66" rx="18"/>
+          <text x="698" y="319" text-anchor="middle" class="title">Silver S3</text>
+          <text x="698" y="340" text-anchor="middle" class="sub">clean tables</text>
+          <rect class="node" x="870" y="292" width="156" height="66" rx="18"/>
+          <text x="948" y="319" text-anchor="middle" class="title">Glue Crawler</text>
+          <text x="948" y="340" text-anchor="middle" class="sub">Catalog refresh</text>
+          <rect class="node node-olive" x="1080" y="292" width="156" height="66" rx="18"/>
+          <text x="1158" y="319" text-anchor="middle" class="title">dbt + Athena</text>
+          <text x="1158" y="340" text-anchor="middle" class="sub">Gold models</text>
 
-          <rect x="688" y="122" width="260" height="320" rx="24" fill="#f1fbf8" stroke="#86d7cd"/>
-          <text x="718" y="158" class="pill-text">3. CATALOG + GOLD</text>
-          <rect class="node node-teal" x="732" y="182" width="172" height="70" rx="18"/>
-          <text x="818" y="210" text-anchor="middle" class="title">Silver S3</text>
-          <text x="818" y="232" text-anchor="middle" class="sub">clean tables</text>
-          <rect class="node" x="732" y="278" width="172" height="70" rx="18"/>
-          <text x="818" y="306" text-anchor="middle" class="title">Glue Crawler</text>
-          <text x="818" y="328" text-anchor="middle" class="sub">Catalog refresh</text>
-          <rect class="node node-olive" x="732" y="374" width="172" height="70" rx="18"/>
-          <text x="818" y="402" text-anchor="middle" class="title">dbt + Athena</text>
-          <text x="818" y="424" text-anchor="middle" class="sub">business models</text>
+          <rect x="70" y="428" width="1180" height="82" rx="24" fill="#f7fbf8" stroke="#bdcda0"/>
+          <text x="96" y="460" class="pill-text">OUTPUT AND CONTEXT LANE</text>
+          <rect class="node node-olive" x="560" y="444" width="170" height="50" rx="16"/>
+          <text x="645" y="465" text-anchor="middle" class="small-title">Gold S3</text>
+          <text x="645" y="483" text-anchor="middle" class="tiny">analytics marts</text>
+          <rect class="node node-blue" x="830" y="444" width="170" height="50" rx="16"/>
+          <text x="915" y="465" text-anchor="middle" class="small-title">dbt artifacts</text>
+          <text x="915" y="483" text-anchor="middle" class="tiny">agent schema context</text>
+          <rect class="node" x="1080" y="444" width="150" height="50" rx="16"/>
+          <text x="1155" y="465" text-anchor="middle" class="small-title">Consumers</text>
+          <text x="1155" y="483" text-anchor="middle" class="tiny">Streamlit / HTML / Slack</text>
 
-          <rect x="1006" y="122" width="260" height="320" rx="24" fill="#f8fbff" stroke="#d8e2ef"/>
-          <text x="1036" y="158" class="pill-text">4. READY OUTPUT</text>
-          <rect class="node node-olive" x="1050" y="210" width="172" height="74" rx="18"/>
-          <text x="1136" y="240" text-anchor="middle" class="title">Gold S3</text>
-          <text x="1136" y="262" text-anchor="middle" class="sub">analytics marts</text>
-          <rect class="node node-blue" x="1050" y="334" width="172" height="74" rx="18"/>
-          <text x="1136" y="362" text-anchor="middle" class="title">dbt artifacts</text>
-          <text x="1136" y="384" text-anchor="middle" class="sub">agent schema context</text>
+          <g class="flow blue"><path class="hit" d="M610 159 H690"/><path class="line" d="M610 159 H690"/><text x="650" y="143" text-anchor="middle">gates</text></g>
+          <g class="flow teal"><path class="hit" d="M880 159 H960"/><path class="line" d="M880 159 H960"/><text x="920" y="143" text-anchor="middle">release</text></g>
+          <g class="flow blue"><path class="hit" d="M485 184 V226 H448 V292"/><path class="line" d="M485 184 V226 H448 V292"/><text x="512" y="226">start Glue</text></g>
+          <g class="flow blue"><path class="hit" d="M785 184 V226 H948 V292"/><path class="line" d="M785 184 V226 H948 V292"/><text x="842" y="226">refresh Catalog</text></g>
+          <g class="flow olive"><path class="hit" d="M1050 184 V226 H1158 V292"/><path class="line" d="M1050 184 V226 H1158 V292"/><text x="1084" y="226">run dbt</text></g>
 
-          <rect class="node node-dark" x="476" y="42" width="370" height="72" rx="22"/>
-          <text x="661" y="72" text-anchor="middle" class="title white-text">Airflow DAG: edp_pipeline</text>
-          <text x="661" y="94" text-anchor="middle" class="sub white-text">schedule, dependencies, waits, validation gates, failure boundaries</text>
+          <g class="flow"><path class="hit" d="M276 325 H370"/><path class="line" d="M276 325 H370"/><text x="323" y="309" text-anchor="middle">read raw</text></g>
+          <g class="flow teal"><path class="hit" d="M526 325 H620"/><path class="line" d="M526 325 H620"/><text x="573" y="309" text-anchor="middle">write Silver</text></g>
+          <g class="flow"><path class="hit" d="M776 325 H870"/><path class="line" d="M776 325 H870"/></g>
+          <g class="flow olive"><path class="hit" d="M1026 325 H1080"/><path class="line" d="M1026 325 H1080"/></g>
 
-          <g class="flow blue"><path class="hit" d="M661 114 C520 145 500 170 500 205"/><path class="line" d="M661 114 C520 145 500 170 500 205"/><text x="548" y="150" text-anchor="middle">start jobs</text></g>
-          <g class="flow blue"><path class="hit" d="M661 114 C520 210 500 270 500 326"/><path class="line" d="M661 114 C520 210 500 270 500 326"/><text x="543" y="290" text-anchor="middle">validate</text></g>
-          <g class="flow teal"><path class="hit" d="M661 114 C765 145 818 154 818 182"/><path class="line" d="M661 114 C765 145 818 154 818 182"/><text x="770" y="146" text-anchor="middle">wait</text></g>
-          <g class="flow olive"><path class="hit" d="M661 114 C812 200 818 316 818 374"/><path class="line" d="M661 114 C812 200 818 316 818 374"/><text x="783" y="354" text-anchor="middle">run dbt</text></g>
-
-          <g class="flow"><path class="hit" d="M268 266 H414"/><path class="line" d="M268 266 H414"/><text x="341" y="251" text-anchor="middle">read raw</text></g>
-          <g class="flow"><path class="hit" d="M586 246 H732"/><path class="line" d="M586 246 H732"/><text x="659" y="231" text-anchor="middle">write Silver</text></g>
-          <g class="flow"><path class="hit" d="M818 252 V278"/><path class="line" d="M818 252 V278"/></g>
-          <g class="flow"><path class="hit" d="M818 348 V374"/><path class="line" d="M818 348 V374"/></g>
-          <g class="flow olive"><path class="hit" d="M904 409 H1050"/><path class="line" d="M904 409 H1050"/><text x="977" y="394" text-anchor="middle">publish Gold</text></g>
-          <g class="flow blue"><path class="hit" d="M904 313 C985 313 1015 371 1050 371"/><path class="line" d="M904 313 C985 313 1015 371 1050 371"/><text x="979" y="330" text-anchor="middle">publish metadata</text></g>
+          <g class="flow olive"><path class="hit" d="M1158 358 V410 H645 V444"/><path class="line" d="M1158 358 V410 H645 V444"/><text x="960" y="424" text-anchor="middle">publish Gold</text></g>
+          <g class="flow blue"><path class="hit" d="M1158 358 V410 H915 V444"/><path class="line" d="M1158 358 V410 H915 V444"/><text x="1036" y="424" text-anchor="middle">publish artifacts</text></g>
+          <g class="flow teal"><path class="hit" d="M1000 469 H1080"/><path class="line" d="M1000 469 H1080"/></g>
         </svg>
       </div>
       <div class="diagram-note">
